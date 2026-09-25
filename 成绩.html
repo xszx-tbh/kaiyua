@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>广州开元学校高一学生成绩查询</title>
+<style>
+  :root{
+    --bg:#f2f5fa; --card:#fff; --line:#e4e9f2; --txt:#1f2937;
+    --muted:#8b95a7; --brand:#3b6cf6; --good:#16a34a; --bad:#e04b4b; --warn:#d97706;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:28px 16px 40px; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1{
+    font-size:22px;margin:0 0 20px;text-align:center;letter-spacing:1px;
+    line-height:1.5;font-weight:700;
+  }
+  @media (max-width:520px){
+    h1{font-size:18px;letter-spacing:0;}
+  }
+
+  .notice{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px 20px; margin-bottom:18px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .notice-title{
+    display:flex; align-items:center; gap:8px;
+    font-size:14px; font-weight:700; color:var(--brand); margin-bottom:10px;
+  }
+  .notice-title::before{
+    content:''; width:4px; height:15px; background:var(--brand); border-radius:2px;
+  }
+  .notice-body{
+    font-size:14px; line-height:1.95; color:var(--txt);
+    white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
+  }
+  .notice-body.fail{ color:var(--bad); }
+  .notice-body.loading{ color:var(--muted); }
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px; margin-bottom:16px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .row{display:flex;gap:10px;}
+  input[type=text]{
+    flex:1;min-width:0;height:44px;padding:0 14px;border:1px solid var(--line);
+    border-radius:10px;font-size:15px;outline:none;background:#fbfcfe;color:var(--txt);
+    transition:.15s;
+  }
+  input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(59,108,246,.12);}
+  button{
+    height:44px;padding:0 20px;border:none;border-radius:10px;background:var(--brand);
+    color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  button:hover:not(:disabled){background:#2f5be0;}
+  button:active:not(:disabled){transform:translateY(1px);}
+  button:disabled{background:#c3ccdb;cursor:not-allowed;}
+  .msg{margin-top:10px;font-size:13px;line-height:1.7;word-break:break-all;}
+  .msg:empty{display:none;}
+  .msg.error{color:var(--bad);}
+  .msg.ok{color:var(--good);}
+  .msg.info{color:var(--muted);}
+  .manual{margin-top:10px;font-size:12px;text-align:right;}
+  .manual a{color:var(--muted);text-decoration:underline;cursor:pointer;}
+  .manual a:hover{color:var(--brand);}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-top:16px;}
+  .stat{background:#f7f9fd;border:1px solid var(--line);border-radius:10px;padding:12px 8px;text-align:center;}
+  .stat .stat-l{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .stat .stat-v{font-size:20px;font-weight:700;color:var(--brand);line-height:1.15;}
+  .stat .stat-v small{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
+  .stat.warn .stat-v{color:var(--warn);}
+
+  .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
+  .stu{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
+    padding:9px 11px;background:#fbfcfe;cursor:pointer;transition:.15s;min-width:0;
+  }
+  .stu:hover{border-color:var(--brand);background:#f4f7ff;}
+  .stu.active{border-color:var(--brand);background:#eaf0ff;box-shadow:0 0 0 2px rgba(59,108,246,.15);}
+  .stu .rk{font-size:11px;color:var(--muted);min-width:22px;flex:0 0 auto;text-align:center;}
+  .stu .nm{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .stu .sc{font-size:12px;color:var(--muted);flex:0 0 auto;}
+  .stu .sc b{color:var(--brand);font-size:14px;}
+  .stu .sc b.abs{color:var(--bad);font-size:12px;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .card-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .rank-badge{
+    background:linear-gradient(135deg,#3b6cf6,#6b8cff);color:#fff;font-size:13px;
+    font-weight:600;padding:7px 13px;border-radius:999px;white-space:nowrap;
+  }
+  .who{flex:1;min-width:130px;}
+  .who .name{font-size:20px;font-weight:700;}
+  .who .cls{font-size:12px;color:var(--muted);margin-top:3px;}
+  .total{font-size:15px;color:var(--muted);}
+  .total b{font-size:30px;color:var(--brand);font-weight:800;line-height:1;margin-right:2px;}
+  .meta{
+    display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;padding-top:14px;
+    border-top:1px dashed var(--line);font-size:13px;color:var(--muted);
+  }
+  .meta b{color:var(--txt);font-weight:600;margin-left:4px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:16px;}
+  .q{border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center;background:#fbfcfe;}
+  .q .qname{font-size:12px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .q .qscore{font-size:17px;font-weight:700;}
+  .q .qscore span{font-size:12px;color:var(--muted);font-weight:400;}
+  .q .qans{font-size:11px;color:var(--muted);margin-top:4px;min-height:14px;word-break:break-all;}
+  .q.full .qscore{color:var(--good);}
+  .q.part .qscore{color:var(--warn);}
+  .q.zero .qscore{color:var(--bad);}
+  .tag-absent{
+    display:inline-block;background:#fdecec;color:var(--bad);font-size:11px;
+    padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;font-weight:500;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>广州开元学校高一学生成绩查询</h1>
+
+  <div class="notice">
+    <div class="notice-title">公告</div>
+    <div class="notice-body loading" id="noticeBody">公告加载中…</div>
+  </div>
+
+  <div class="panel">
+    <label for="dateInput">考试日期 / 文件名</label>
+    <div class="row">
+      <input id="dateInput" type="text" maxlength="40"
+             placeholder="如 20260922 或 exam2026A" autocomplete="off">
+      <button id="loadBtn">读取</button>
+    </div>
+    <div id="loadMsg" class="msg"></div>
+    <div class="manual"><a id="pickFile">手动选择成绩单文件</a></div>
+    <input id="fileInput" type="file" accept=".txt,.csv" hidden>
+  </div>
+
+  <div class="panel" id="classPanel" hidden>
+    <label for="classInput">班级</label>
+    <div class="row">
+      <input id="classInput" type="text" placeholder="如 1班 或 1" autocomplete="off">
+      <button id="classBtn">查询</button>
+    </div>
+    <div id="classMsg" class="msg"></div>
+    <div id="classStats" class="stats"></div>
+    <div id="classListWrap"></div>
+  </div>
+
+  <div class="panel" id="searchPanel" hidden>
+    <label for="nameInput">姓名</label>
+    <div class="row">
+      <input id="nameInput" type="text" placeholder="如 张三" autocomplete="off">
+      <button id="searchBtn">查询</button>
+    </div>
+    <div id="searchMsg" class="msg"></div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var state = { sheet: null, label: '', activeStu: null };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var dateInput    = $('dateInput'),
+      loadBtn      = $('loadBtn'),
+      loadMsg      = $('loadMsg'),
+      classPanel   = $('classPanel'),
+      classInput   = $('classInput'),
+      classBtn     = $('classBtn'),
+      classMsg     = $('classMsg'),
+      classStats   = $('classStats'),
+      classListWrap= $('classListWrap'),
+      searchPanel  = $('searchPanel'),
+      nameInput    = $('nameInput'),
+      searchBtn    = $('searchBtn'),
+      searchMsg    = $('searchMsg'),
+      resultEl     = $('result'),
+      pickFile     = $('pickFile'),
+      fileInput    = $('fileInput'),
+      noticeBody   = $('noticeBody');
+
+  /* ---------------- 基础工具 ---------------- */
+
+  function setMsg(el, text, type) {
+    el.textContent = text || '';
+    el.className = 'msg' + (type ? ' ' + type : '');
+  }
+
+  function toNum(v) {
+    if (v === undefined || v === null) return 0;
+    var s = String(v).trim();
+    if (s === '' || s === '零' || s === '#' || s === '-') return 0;
+    var n = Number(s);
+    return isFinite(n) ? n : 0;
+  }
+
+  function fmt(n) {
+    if (!isFinite(n)) return '0';
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+  }
+
+  function fmt1(n) {
+    if (!isFinite(n)) return '0';
+    return (Math.round(n * 10) / 10).toFixed(1);
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* 文件名净化：允许中文、英文、数字、下划线、连字符、点、括号等；
+     仅过滤掉文件系统不允许或会破坏 URL 的字符。 */
+  function sanitizeFileName(s) {
+    return String(s == null ? '' : s).trim()
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')  // 文件系统不允许
+      .replace(/\s+/g, '')                        // 去掉所有空白
+      .replace(/\.+$/, '');                       // 去掉结尾的点
+  }
+
+  /* 班级名归一化：1班 / 1 / 一班 / 一 → "1" */
+  var CN = { '一':'1','二':'2','三':'3','四':'4','五':'5','六':'6','七':'7','八':'8','九':'9','十':'10' };
+  function cnToNum(m) {
+    if (!m) return '';
+    if (m.length === 1) return CN[m] || m;
+    if (/^十[一二三四五六七八九]$/.test(m)) return '1' + CN[m[1]];
+    if (/^[一二三四五六七八九]十$/.test(m)) return CN[m[0]] + '0';
+    if (/^[一二三四五六七八九]十[一二三四五六七八九]$/.test(m)) return CN[m[0]] + CN[m[2]];
+    return m;
+  }
+  function normalizeClass(s) {
+    return String(s == null ? '' : s).trim().replace(/\s/g, '')
+      .replace(/班$/g, '')
+      .replace(/[一二三四五六七八九十]+/g, cnToNum);
+  }
+
+  /* ---------------- 路径拼接（适配子目录部署） ---------------- */
+
+  function sheetURL(fileName) {
+    var href = document.baseURI || location.href;
+    href = href.replace(/[?#].*$/, '');
+    if (!/\/$/.test(href)) href = href.replace(/[^/]*$/, '');
+    return href + encodeURIComponent(fileName);
+  }
+
+  /* ---------------- 文本解码（UTF-8 / GBK 容错） ---------------- */
+
+  function decodeBuffer(buf) {
+    var bytes = new Uint8Array(buf);
+    var offset = 0;
+    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) offset = 3;
+
+    var text = '';
+    try {
+      text = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(offset));
+    } catch (e) { text = ''; }
+
+    var bad = (text.match(/\uFFFD/g) || []).length;
+    if (bad > 0) {
+      try {
+        var alt = new TextDecoder('gbk', { fatal: false }).decode(bytes.subarray(offset));
+        if ((alt.match(/\uFFFD/g) || []).length < bad) return alt;
+      } catch (e2) { /* 忽略 */ }
+    }
+    return text;
+  }
+
+  /* ---------------- 请求文本文件 ---------------- */
+
+  function fetchText(url) {
+    return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
+      if (!res.ok) {
+        var e = new Error('HTTP ' + res.status);
+        e.status = res.status;
+        throw e;
+      }
+      var ct = (res.headers.get('content-type') || '').toLowerCase();
+      return res.arrayBuffer().then(function (buf) {
+        var text = decodeBuffer(buf);
+        if (ct.indexOf('text/html') > -1 || /^\s*<(!doctype|html)/i.test(text)) {
+          var e2 = new Error('NOT_FOUND_AS_HTML');
+          e2.code = 'HTML_FALLBACK';
+          throw e2;
+        }
+        return text;
+      });
+    });
+  }
+
+  /* 优先按用户输入直接访问；若无扩展名，自动补 .txt；再兜底 .csv */
+  function fetchSheet(inputName) {
+    var base = inputName;
+    var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
+    var candidates = hasExt ? [base] : [base + '.txt', base + '.csv'];
+
+    var last = null;
+
+    function tryNext(i) {
+      if (i >= candidates.length) return Promise.reject(last);
+      var fileName = candidates[i];
+      var url = sheetURL(fileName);
+      return fetchText(url).then(function (text) {
+        return { text: text, fileName: fileName, url: url };
+      }).catch(function (err) {
+        err.url = url;
+        err.fileName = fileName;
+        last = err;
+        return tryNext(i + 1);
+      });
+    }
+    return tryNext(0);
+  }
+
+  /* ---------------- 公告 ---------------- */
+
+  function loadNotice() {
+    noticeBody.classList.remove('fail');
+    noticeBody.classList.add('loading');
+    noticeBody.textContent = '公告加载中…';
+
+    fetchText(sheetURL('gg.txt')).then(function (text) {
+      var t = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/[ \t]+$/gm, '').trim();
+      noticeBody.classList.remove('loading');
+      if (!t) {
+        noticeBody.classList.add('fail');
+        noticeBody.textContent = '公告获取失败';
+        return;
+      }
+      noticeBody.textContent = t;
+    }).catch(function () {
+      noticeBody.classList.remove('loading');
+      noticeBody.classList.add('fail');
+      noticeBody.textContent = '公告获取失败';
+    });
+  }
+
+  /* ---------------- CSV 解析 ---------------- */
+
+  function splitLine(line) {
+    var out = [], cur = '', inQ = false, i, c;
+    for (i = 0; i < line.length; i++) {
+      c = line[i];
+      if (inQ) {
+        if (c === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQ = false; }
+        } else { cur += c; }
+      } else {
+        if (c === '"') { inQ = true; }
+        else if (c === ',') { out.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+    }
+    out.push(cur);
+    return out.map(function (s) { return s.trim(); });
+  }
+
+  function parseCSV(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    var rows = [], lines = text.split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue;
+      rows.push(splitLine(lines[i]));
+    }
+    return rows;
+  }
+
+  function buildSheet(rows) {
+    if (!rows.length) throw new Error('文件内容为空。');
+
+    var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
+    var col = {};
+
+    header.forEach(function (h, i) {
+      if (col.rank   === undefined && h.indexOf('排名')     > -1) col.rank = i;
+      if (col.cls    === undefined && h.indexOf('班级')     > -1) col.cls = i;
+      if (col.name   === undefined && h === '姓名')               col.name = i;
+      if (col.absent === undefined && h.indexOf('缺考')     > -1) col.absent = i;
+      if (col.total  === undefined && h.indexOf('科目总分') > -1) col.total = i;
+      if (col.obj    === undefined && h.indexOf('客观分')   > -1) col.obj = i;
+      if (col.sub    === undefined && h.indexOf('主观分')   > -1) col.sub = i;
+    });
+
+    if (col.name === undefined) throw new Error('文件中没有找到“姓名”列，格式可能不正确。');
+
+    var questions = [];
+    header.forEach(function (h, i) {
+      var m = h.match(/^(.+?)\s*\(\s*([\d.]+)\s*[.．]\s*零分\s*\)$/);
+      if (!m) return;
+      var q = { name: m[1].trim(), full: parseFloat(m[2]), scoreIdx: i, ansIdx: null };
+      if (header[i + 1] === '作答选项') q.ansIdx = i + 1;
+      questions.push(q);
+    });
+
+    if (!questions.length) throw new Error('文件中没有找到题目得分列，格式可能不正确。');
+
+    var records = [];
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      var name = (r[col.name] || '').trim();
+      if (!name) continue;
+
+      records.push({
+        rank:   (r[col.rank] || '').trim(),
+        cls:    (r[col.cls] || '').trim(),
+        clsKey: normalizeClass(r[col.cls]),
+        name:   name,
+        absent: col.absent !== undefined ? (r[col.absent] || '').trim() : '',
+        total:  toNum(r[col.total]),
+        obj:    toNum(r[col.obj]),
+        sub:    toNum(r[col.sub]),
+        details: questions.map(function (q) {
+          return {
+            name:   q.name,
+            full:   q.full,
+            score:  toNum(r[q.scoreIdx]),
+            ans:    q.ansIdx !== null ? (r[q.ansIdx] || '').trim() : '',
+            hasAns: q.ansIdx !== null
+          };
+        })
+      });
+    }
+
+    if (!records.length) throw new Error('没有解析到任何学生记录。');
+    return { records: records, questions: questions };
+  }
+
+  /* ---------------- 应用数据 ---------------- */
+
+  function applySheet(text, label) {
+    var sheet;
+    try {
+      sheet = buildSheet(parseCSV(text));
+    } catch (err) {
+      setMsg(loadMsg, '读取失败：' + err.message, 'error');
+      return false;
+    }
+
+    state.sheet = sheet;
+    state.label = label;
+    state.activeStu = null;
+
+    setMsg(loadMsg, '已读取 ' + label + '，共 ' + sheet.records.length + ' 人。', 'ok');
+
+    classPanel.hidden = false;
+    searchPanel.hidden = false;
+
+    classInput.value = '';
+    nameInput.value = '';
+    classStats.innerHTML = '';
+    classListWrap.innerHTML = '';
+    setMsg(classMsg, '', '');
+    setMsg(searchMsg, '', '');
+    resultEl.innerHTML = '';
+    return true;
+  }
+
+  /* ---------------- 加载流程 ---------------- */
+
+  function handleLoad() {
+    var fileName = sanitizeFileName(dateInput.value);
+
+    if (!fileName) {
+      setMsg(loadMsg, '请输入考试日期或文件名。', 'error');
+      return;
+    }
+    dateInput.value = fileName;
+
+    loadBtn.disabled = true;
+    loadBtn.textContent = '读取中';
+    setMsg(loadMsg, '正在读取…', 'info');
+    resultEl.innerHTML = '';
+    classPanel.hidden = true;
+    searchPanel.hidden = true;
+    state.sheet = null;
+
+    fetchSheet(fileName).then(function (got) {
+      applySheet(got.text, got.fileName);
+    }).catch(function (err) {
+      var tried = err && err.fileName ? err.fileName : (fileName + '.txt');
+      if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
+        setMsg(loadMsg, '未找到成绩单 ' + tried + '，请检查文件名是否正确。', 'error');
+      } else if (err && err.status) {
+        setMsg(loadMsg, '读取失败：服务器返回 ' + err.status + '。', 'error');
+      } else {
+        setMsg(loadMsg, '读取失败：无法访问成绩单文件。', 'error');
+      }
+    }).then(function () {
+      loadBtn.disabled = false;
+      loadBtn.textContent = '读取';
+    });
+  }
+
+  /* ---------------- 班级查询 ---------------- */
+
+  function doClassQuery() {
+    if (!state.sheet) {
+      setMsg(classMsg, '请先读取成绩单。', 'error');
+      return;
+    }
+
+    var raw = classInput.value.trim();
+    if (!raw) {
+      setMsg(classMsg, '请输入班级。', 'error');
+      return;
+    }
+
+    var key = normalizeClass(raw);
+    var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
+
+    classStats.innerHTML = '';
+    classListWrap.innerHTML = '';
+    resultEl.innerHTML = '';
+    state.activeStu = null;
+
+    if (!list.length) {
+      setMsg(classMsg, '未找到该班级。', 'error');
+      return;
+    }
+
+    var taken = list.filter(function (r) { return r.absent === ''; });
+    var absentCount = list.length - taken.length;
+
+    function avgOf(arr, field) {
+      if (!arr.length) return 0;
+      return arr.reduce(function (a, r) { return a + r[field]; }, 0) / arr.length;
+    }
+
+    var avgTotal = avgOf(taken, 'total'),
+        avgObj   = avgOf(taken, 'obj'),
+        avgSub   = avgOf(taken, 'sub');
+
+    var html = '';
+    html += statBox('班级人数', list.length, ' 人');
+    if (absentCount > 0) html += statBox('缺考', absentCount, ' 人', true);
+    html += statBox('实考人数', taken.length, ' 人');
+    html += statBox('平均总分', taken.length ? fmt1(avgTotal) : '—', taken.length ? ' 分' : '');
+    html += statBox('平均客观分', taken.length ? fmt1(avgObj) : '—', taken.length ? ' 分' : '');
+    html += statBox('平均主观分', taken.length ? fmt1(avgSub) : '—', taken.length ? ' 分' : '');
+    classStats.innerHTML = html;
+
+    setMsg(classMsg, (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
+      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : ''), 'info');
+
+    var grid = document.createElement('div');
+    grid.className = 'stu-list';
+
+    list.forEach(function (rec) {
+      var el = document.createElement('div');
+      el.className = 'stu';
+
+      var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
+      var scoreHtml = rec.absent
+        ? '<b class="abs">缺考</b>'
+        : '<b>' + esc(fmt(rec.total)) + '</b>';
+
+      el.innerHTML =
+        '<span class="rk">' + esc(rankTxt) + '</span>' +
+        '<span class="nm">' + esc(rec.name) + '</span>' +
+        '<span class="sc">' + scoreHtml + '</span>';
+
+      el.addEventListener('click', function () {
+        if (state.activeStu) state.activeStu.classList.remove('active');
+        el.classList.add('active');
+        state.activeStu = el;
+        showStudent(rec);
+      });
+
+      grid.appendChild(el);
+    });
+
+    classListWrap.appendChild(grid);
+  }
+
+  function statBox(label, value, unit, warn) {
+    return '<div class="stat' + (warn ? ' warn' : '') + '">' +
+             '<div class="stat-l">' + esc(label) + '</div>' +
+             '<div class="stat-v">' + esc(value) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div>' +
+           '</div>';
+  }
+
+  /* ---------------- 渲染结果 ---------------- */
+
+  function showStudent(rec) {
+    resultEl.innerHTML = '';
+    resultEl.appendChild(buildCard(rec));
+    resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function buildCard(rec) {
+    var card = document.createElement('div');
+    card.className = 'card';
+
+    var isAbsent = rec.absent !== '';
+    var sum = rec.details.reduce(function (a, d) { return a + d.score; }, 0);
+
+    var head = document.createElement('div');
+    head.className = 'card-head';
+
+    var rank = document.createElement('div');
+    rank.className = 'rank-badge';
+    rank.textContent = (rec.rank && rec.rank !== '0') ? ('第 ' + rec.rank + ' 名') : '暂无排名';
+
+    var who = document.createElement('div');
+    who.className = 'who';
+    var nm = document.createElement('div');
+    nm.className = 'name';
+    nm.textContent = rec.name;
+    if (isAbsent) {
+      var tag = document.createElement('span');
+      tag.className = 'tag-absent';
+      tag.textContent = '缺考';
+      nm.appendChild(tag);
+    }
+    var cl = document.createElement('div');
+    cl.className = 'cls';
+    cl.textContent = rec.cls || '—';
+    who.appendChild(nm);
+    who.appendChild(cl);
+
+    var total = document.createElement('div');
+    total.className = 'total';
+    total.innerHTML = '<b>' + esc(fmt(rec.total)) + '</b>分';
+
+    head.appendChild(rank);
+    head.appendChild(who);
+    head.appendChild(total);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML =
+      '<span>客观分<b>' + esc(fmt(rec.obj)) + '</b></span>' +
+      '<span>主观分<b>' + esc(fmt(rec.sub)) + '</b></span>' +
+      '<span>小题合计<b>' + esc(fmt(sum)) + '</b></span>';
+
+    var grid = document.createElement('div');
+    grid.className = 'grid';
+
+    rec.details.forEach(function (d) {
+      var q = document.createElement('div');
+      var cls = 'q ';
+      if (d.score >= d.full) cls += 'full';
+      else if (d.score <= 0) cls += 'zero';
+      else cls += 'part';
+      q.className = cls;
+
+      var label = /^\d+$/.test(d.name) ? ('第' + d.name + '题') : d.name;
+      var ansText = '';
+      if (d.hasAns) {
+        ansText = (d.ans && d.ans !== '#') ? ('选 ' + d.ans) : '未作答';
+      }
+
+      q.innerHTML =
+        '<div class="qname">' + esc(label) + '</div>' +
+        '<div class="qscore">' + esc(fmt(d.score)) + '<span>/' + esc(fmt(d.full)) + '</span></div>' +
+        '<div class="qans">' + esc(ansText) + '</div>';
+
+      grid.appendChild(q);
+    });
+
+    card.appendChild(head);
+    card.appendChild(meta);
+    card.appendChild(grid);
+    return card;
+  }
+
+  /* ---------------- 姓名查询 ---------------- */
+
+  function doSearch() {
+    if (!state.sheet) {
+      setMsg(searchMsg, '请先读取成绩单。', 'error');
+      return;
+    }
+    var key = nameInput.value.trim();
+    resultEl.innerHTML = '';
+    if (state.activeStu) { state.activeStu.classList.remove('active'); state.activeStu = null; }
+
+    if (!key) {
+      setMsg(searchMsg, '请输入姓名。', 'error');
+      return;
+    }
+
+    var all = state.sheet.records;
+    var list = all.filter(function (r) { return r.name === key; });
+    if (!list.length) {
+      list = all.filter(function (r) { return r.name.indexOf(key) > -1; });
+    }
+
+    if (!list.length) {
+      setMsg(searchMsg, '未找到“' + key + '”。', 'error');
+      return;
+    }
+
+    setMsg(searchMsg, list.length > 1 ? ('找到 ' + list.length + ' 条记录：') : '', 'info');
+    list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+
+  loadBtn.addEventListener('click', handleLoad);
+  classBtn.addEventListener('click', doClassQuery);
+  searchBtn.addEventListener('click', doSearch);
+
+  // 只拦掉文件系统非法字符，字母 / 数字 / 中文 / 连字符 / 下划线 / 点 全部放行
+  dateInput.addEventListener('input', function () {
+    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
+    if (v !== dateInput.value) dateInput.value = v;
+  });
+  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
+  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+
+  // 手动选择文件
+  pickFile.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    var base = f.name.replace(/\.[^.]+$/, '');   // 去掉扩展名，填入输入框
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (applySheet(String(reader.result), f.name)) {
+        dateInput.value = base;
+      }
+    };
+    reader.onerror = function () { setMsg(loadMsg, '读取本地文件失败。', 'error'); };
+    reader.readAsText(f, 'UTF-8');
+    fileInput.value = '';
+  });
+
+  /* ---------------- URL 参数直达 ---------------- */
+
+  (function initFromQuery() {
+    var q = new URLSearchParams(location.search);
+    var f = sanitizeFileName(q.get('file') || q.get('date') || '');
+    var n = q.get('name') || '';
+    var c = q.get('class') || '';
+    if (f) {
+      dateInput.value = f;
+      handleLoad();
+      if (n || c) {
+        var timer = setInterval(function () {
+          if (state.sheet) {
+            clearInterval(timer);
+            if (c) { classInput.value = c; doClassQuery(); }
+            if (n) { nameInput.value = n; doSearch(); }
+          }
+        }, 120);
+        setTimeout(function () { clearInterval(timer); }, 8000);
+      }
+    }
+  })();
+
+  /* ---------------- 启动 ---------------- */
+
+  loadNotice();
+})();
+</script>
+</body>
+</html>
