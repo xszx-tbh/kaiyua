@@ -93,19 +93,6 @@
   .stat .stat-v small{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
   .stat.warn .stat-v{color:var(--warn);}
 
-  .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
-  .stu{
-    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
-    padding:9px 11px;background:#fbfcfe;cursor:pointer;transition:.15s;min-width:0;
-  }
-  .stu:hover{border-color:var(--brand);background:#f4f7ff;}
-  .stu.active{border-color:var(--brand);background:#eaf0ff;box-shadow:0 0 0 2px rgba(59,108,246,.15);}
-  .stu .rk{font-size:11px;color:var(--muted);min-width:22px;flex:0 0 auto;text-align:center;}
-  .stu .nm{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .stu .sc{font-size:12px;color:var(--muted);flex:0 0 auto;}
-  .stu .sc b{color:var(--brand);font-size:14px;}
-  .stu .sc b.abs{color:var(--bad);font-size:12px;}
-
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);
@@ -161,22 +148,21 @@
     </div>
     <div id="loadMsg" class="msg"></div>
     <div id="rawTableWrap"></div>
-    <input id="fileInput" type="file" onclick="this.value=''" hidden>
+    <input id="fileInput" type="file" hidden>
   </div>
 
   <div class="panel" id="classPanel" hidden>
-    <label for="classInput">班级</label>
+    <label for="classInput">班级（仅显示统计）</label>
     <div class="row">
       <input id="classInput" type="text" placeholder="如 1班 或 1" autocomplete="off">
       <button id="classBtn">查询</button>
     </div>
     <div id="classMsg" class="msg"></div>
     <div id="classStats" class="stats"></div>
-    <div id="classListWrap"></div>
   </div>
 
   <div class="panel" id="searchPanel" hidden>
-    <label for="nameInput">姓名</label>
+    <label for="nameInput">姓名（需完整输入）</label>
     <div class="row">
       <input id="nameInput" type="text" placeholder="如 张三" autocomplete="off">
       <button id="searchBtn">查询</button>
@@ -191,7 +177,7 @@
 (function () {
   'use strict';
 
-  var state = { sheet: null, label: '', activeStu: null };
+  var state = { sheet: null, label: '' };
 
   var $ = function (id) { return document.getElementById(id); };
   var dateInput      = $('dateInput'),
@@ -202,7 +188,6 @@
       classBtn       = $('classBtn'),
       classMsg       = $('classMsg'),
       classStats     = $('classStats'),
-      classListWrap  = $('classListWrap'),
       searchPanel    = $('searchPanel'),
       nameInput      = $('nameInput'),
       searchBtn      = $('searchBtn'),
@@ -477,7 +462,6 @@
   function activateSheet(sheet, label) {
     state.sheet = sheet;
     state.label = label;
-    state.activeStu = null;
 
     setMsg(loadMsg, '已读取 ' + label + '，共 ' + sheet.records.length + ' 人。', 'ok');
 
@@ -487,7 +471,6 @@
     classInput.value = '';
     nameInput.value = '';
     classStats.innerHTML = '';
-    classListWrap.innerHTML = '';
     setMsg(classMsg, '', '');
     setMsg(searchMsg, '', '');
     resultEl.innerHTML = '';
@@ -612,7 +595,7 @@
     }
   }
 
-  /* ---------------- 本地文件导入（统一入口） ---------------- */
+  /* ---------------- 导入结果处理 ---------------- */
 
   function onImported(rows, fileName) {
     if (!rows || !rows.length) {
@@ -630,7 +613,6 @@
       activateSheet(sheet, fileName);
     } else {
       state.sheet = null;
-      state.activeStu = null;
       classPanel.hidden = true;
       searchPanel.hidden = true;
       resultEl.innerHTML = '';
@@ -638,32 +620,9 @@
     }
   }
 
-  /* 关键：在 change 事件里立即读取整份文件字节，避免 File 引用失效 */
-  function handleLocalFile(file) {
-    var name = file.name || '';
-    var m = name.match(/\.([^.]+)$/);
-    var ext = m ? m[1].toLowerCase() : '';
-    var mt = (file.type || '').toLowerCase();
-
-    setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
-    rawTableWrap.innerHTML = '';
-    resultEl.innerHTML = '';
-    classPanel.hidden = true;
-    searchPanel.hidden = true;
-    state.sheet = null;
-
-    // ⚡ 立刻读取，获取独立的 ArrayBuffer，和 input 生命周期脱钩
-    file.arrayBuffer().then(function (buf) {
-      processFileBuffer(buf, name, ext, mt);
-    }).catch(function (e) {
-      setMsg(loadMsg, '读取文件失败：' + (e && e.message ? e.message : String(e)), 'error');
-    });
-  }
-
-  function processFileBuffer(buf, name, ext, mt) {
-    var bytes = new Uint8Array(buf);
-
-    // Excel 系列：先确保 SheetJS 就绪，再用已读到的字节解析
+  /* 处理已读入内存的 ArrayBuffer（不再依赖 File 对象） */
+  function processBuffer(buffer, name, ext, mt) {
+    // Excel 系列
     if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
       ensureXLSX(function (ok) {
         if (!ok) {
@@ -671,6 +630,7 @@
           return;
         }
         try {
+          var bytes = new Uint8Array(buffer);
           var wb = XLSX.read(bytes, { type: 'array' });
           if (!wb.SheetNames.length) throw new Error('工作簿中没有工作表。');
           var ws = wb.Sheets[wb.SheetNames[0]];
@@ -690,15 +650,15 @@
       return;
     }
 
-    // 明显二进制文件：无法作为表格
+    // 明显二进制文件
     if (/^(image|video|audio)\//.test(mt) || mt === 'application/pdf') {
       setMsg(loadMsg, '已选择 ' + name + '（' + (mt || '二进制文件') + '），无法作为表格显示。', 'error');
       return;
     }
 
-    // 其他一律按文本 / CSV 解析
+    // 其他按文本 / CSV 处理
     try {
-      var text = decodeBuffer(buf);
+      var text = decodeBuffer(buffer);
       var rows = parseCSV(text);
       onImported(rows, name);
     } catch (e) {
@@ -706,7 +666,63 @@
     }
   }
 
-  /* ---------------- 班级查询 ---------------- */
+  /* ---------------- 事件绑定 ---------------- */
+
+  loadBtn.addEventListener('click', handleLoad);
+  classBtn.addEventListener('click', doClassQuery);
+  searchBtn.addEventListener('click', doSearch);
+
+  dateInput.addEventListener('input', function () {
+    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
+    if (v !== dateInput.value) dateInput.value = v;
+  });
+  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
+  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+
+  pickFile.addEventListener('click', function () {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+
+    var name = f.name || '';
+    var m = name.match(/\.([^.]+)$/);
+    var ext = m ? m[1].toLowerCase() : '';
+    var mt = (f.type || '').toLowerCase();
+
+    setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
+    rawTableWrap.innerHTML = '';
+    resultEl.innerHTML = '';
+    classPanel.hidden = true;
+    searchPanel.hidden = true;
+    state.sheet = null;
+
+    var reader = new FileReader();
+
+    reader.onload = function (ev) {
+      fileInput.value = '';
+      processBuffer(ev.target.result, name, ext, mt);
+    };
+
+    reader.onerror = function () {
+      fileInput.value = '';
+      var err = reader.error;
+      var msg = err && err.message ? err.message : '无法访问该文件';
+      if (/permission|could not be read|not be read/i.test(msg)) {
+        setMsg(loadMsg, '读取文件失败：浏览器已撤销对该文件的访问权限，请重新点击“选择本地文件”再选一次，或刷新页面后重试。', 'error');
+      } else {
+        setMsg(loadMsg, '读取文件失败：' + msg, 'error');
+      }
+    };
+
+    reader.readAsArrayBuffer(f);
+  });
+
+  /* ---------------- 班级查询（仅统计，不显示名单） ---------------- */
 
   function doClassQuery() {
     if (!state.sheet) {
@@ -724,9 +740,7 @@
     var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
 
     classStats.innerHTML = '';
-    classListWrap.innerHTML = '';
     resultEl.innerHTML = '';
-    state.activeStu = null;
 
     if (!list.length) {
       setMsg(classMsg, '未找到该班级。', 'error');
@@ -755,36 +769,8 @@
     classStats.innerHTML = html;
 
     setMsg(classMsg, (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
-      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : ''), 'info');
-
-    var grid = document.createElement('div');
-    grid.className = 'stu-list';
-
-    list.forEach(function (rec) {
-      var el = document.createElement('div');
-      el.className = 'stu';
-
-      var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
-      var scoreHtml = rec.absent
-        ? '<b class="abs">缺考</b>'
-        : '<b>' + esc(fmt(rec.total)) + '</b>';
-
-      el.innerHTML =
-        '<span class="rk">' + esc(rankTxt) + '</span>' +
-        '<span class="nm">' + esc(rec.name) + '</span>' +
-        '<span class="sc">' + scoreHtml + '</span>';
-
-      el.addEventListener('click', function () {
-        if (state.activeStu) state.activeStu.classList.remove('active');
-        el.classList.add('active');
-        state.activeStu = el;
-        showStudent(rec);
-      });
-
-      grid.appendChild(el);
-    });
-
-    classListWrap.appendChild(grid);
+      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '') +
+      ' · 如需查看个人成绩，请在下方输入完整姓名。', 'info');
   }
 
   function statBox(label, value, unit, warn) {
@@ -795,12 +781,6 @@
   }
 
   /* ---------------- 渲染结果 ---------------- */
-
-  function showStudent(rec) {
-    resultEl.innerHTML = '';
-    resultEl.appendChild(buildCard(rec));
-    resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
 
   function buildCard(rec) {
     var card = document.createElement('div');
@@ -879,7 +859,7 @@
     return card;
   }
 
-  /* ---------------- 姓名查询 ---------------- */
+  /* ---------------- 姓名查询（必须完整精确匹配） ---------------- */
 
   function doSearch() {
     if (!state.sheet) {
@@ -888,48 +868,22 @@
     }
     var key = nameInput.value.trim();
     resultEl.innerHTML = '';
-    if (state.activeStu) { state.activeStu.classList.remove('active'); state.activeStu = null; }
 
     if (!key) {
-      setMsg(searchMsg, '请输入姓名。', 'error');
+      setMsg(searchMsg, '请输入完整姓名。', 'error');
       return;
     }
 
-    var all = state.sheet.records;
-    var list = all.filter(function (r) { return r.name === key; });
-    if (!list.length) {
-      list = all.filter(function (r) { return r.name.indexOf(key) > -1; });
-    }
+    var list = state.sheet.records.filter(function (r) { return r.name === key; });
 
     if (!list.length) {
-      setMsg(searchMsg, '未找到“' + key + '”。', 'error');
+      setMsg(searchMsg, '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
       return;
     }
 
     setMsg(searchMsg, list.length > 1 ? ('找到 ' + list.length + ' 条记录：') : '', 'info');
     list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
   }
-
-  /* ---------------- 事件绑定 ---------------- */
-
-  loadBtn.addEventListener('click', handleLoad);
-  classBtn.addEventListener('click', doClassQuery);
-  searchBtn.addEventListener('click', doSearch);
-
-  dateInput.addEventListener('input', function () {
-    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
-    if (v !== dateInput.value) dateInput.value = v;
-  });
-  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
-  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
-  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
-
-  pickFile.addEventListener('click', function () { fileInput.click(); });
-  fileInput.addEventListener('change', function () {
-    var f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    handleLocalFile(f);
-  });
 
   /* ---------------- URL 参数直达 ---------------- */
 
