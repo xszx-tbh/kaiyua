@@ -43,6 +43,26 @@
   .notice-body.fail{ color:var(--bad); }
   .notice-body.loading{ color:var(--muted); }
 
+  /* 考试目录 */
+  .toc-group { margin-bottom: 14px; }
+  .toc-group:last-child { margin-bottom: 0; }
+  .toc-subject {
+    font-size: 13px; font-weight: 700; color: var(--brand);
+    margin-bottom: 8px; padding-left: 9px; position: relative;
+  }
+  .toc-subject::before {
+    content: ''; position: absolute; left: 0; top: 50%;
+    transform: translateY(-50%); width: 3px; height: 12px;
+    background: var(--brand); border-radius: 2px;
+  }
+  .toc-items { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toc-item {
+    height: auto; padding: 7px 13px; font-size: 13px; font-weight: 500;
+    background: #eaf0ff; color: var(--brand); border-radius: 8px;
+  }
+  .toc-item:hover:not(:disabled) { background: #dbe6ff; }
+  .toc-item.active { background: var(--brand); color: #fff; }
+
   .panel{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:18px; margin-bottom:16px; box-shadow:0 1px 2px rgba(16,24,40,.04);
@@ -136,11 +156,17 @@
     <div class="notice-body loading" id="noticeBody">公告加载中…</div>
   </div>
 
+  <div class="panel" id="tocPanel" hidden>
+    <label>考试目录</label>
+    <div id="tocList"></div>
+    <div id="tocMsg" class="msg"></div>
+  </div>
+
   <div class="panel">
     <label for="dateInput">考试日期 / 文件名</label>
     <div class="row">
       <input id="dateInput" type="text" maxlength="60"
-             placeholder="如 20260922 或 exam2026A" autocomplete="off">
+             placeholder="如 20260922 或 yy20260915" autocomplete="off">
       <button id="loadBtn">读取</button>
     </div>
     <div class="row">
@@ -196,7 +222,63 @@
       pickFile       = $('pickFile'),
       fileInput      = $('fileInput'),
       noticeBody     = $('noticeBody'),
-      rawTableWrap   = $('rawTableWrap');
+      rawTableWrap   = $('rawTableWrap'),
+      tocPanel       = $('tocPanel'),
+      tocList        = $('tocList'),
+      tocMsg         = $('tocMsg');
+
+  /* ---------------- 学科映射 ---------------- */
+
+  var SUBJECT_MAP = {
+    yw: '语文',
+    sx: '数学',
+    yy: '英语',
+    wl: '物理',
+    hx: '化学',
+    sw: '生物',
+    zz: '政治',
+    ls: '历史',
+    dl: '地理',
+    xx: '信息技术',
+    tj: '通用技术',
+    ty: '体育',
+    yj: '音乐',
+    ms: '美术',
+    js: '计算机'
+  };
+
+  var SUBJECT_ORDER = [
+    '语文', '数学', '英语',
+    '物理', '化学', '生物',
+    '政治', '历史', '地理',
+    '信息技术', '通用技术',
+    '体育', '音乐', '美术', '计算机'
+  ];
+
+  /* 解析成绩单 ID：全数字=数学；字母前缀=对应学科 */
+  function parseSheetId(id) {
+    var raw = String(id).trim().replace(/\.[A-Za-z0-9]{1,6}$/, '');
+    var m = raw.match(/^([A-Za-z]*)(\d+)$/);
+    if (!m) {
+      return { id: raw, prefix: '', date: raw, subject: '其他' };
+    }
+    var prefix = (m[1] || '').toLowerCase();
+    var date = m[2];
+    var subject;
+    if (!prefix) {
+      subject = '数学';
+    } else {
+      subject = SUBJECT_MAP[prefix] || ('其他(' + prefix.toUpperCase() + ')');
+    }
+    return { id: raw, prefix: prefix, date: date, subject: subject };
+  }
+
+  function formatDate(d) {
+    if (d && d.length === 8 && /^\d+$/.test(d)) {
+      return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+    }
+    return d;
+  }
 
   /* ---------------- 基础工具 ---------------- */
 
@@ -348,6 +430,93 @@
       noticeBody.classList.add('fail');
       noticeBody.textContent = '公告获取失败';
     });
+  }
+
+  /* ---------------- 考试目录（ml.txt） ---------------- */
+
+  function loadTOC() {
+    fetchText(sheetURL('ml.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var entries = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || line.charAt(0) === '#') continue;
+        entries.push(parseSheetId(line));
+      }
+      if (!entries.length) { tocPanel.hidden = true; return; }
+      renderTOC(entries);
+      tocPanel.hidden = false;
+    }).catch(function () {
+      tocPanel.hidden = true;
+    });
+  }
+
+  function renderTOC(entries) {
+    // 按学科分组
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+
+    // 学科排序：预定义顺序优先，未知学科放末尾并按名称排
+    var subjects = Object.keys(groups);
+    subjects.sort(function (a, b) {
+      var ia = SUBJECT_ORDER.indexOf(a);
+      var ib = SUBJECT_ORDER.indexOf(b);
+      if (ia === -1) ia = 1000;
+      if (ib === -1) ib = 1000;
+      if (ia !== ib) return ia - ib;
+      return a.localeCompare(b, 'zh');
+    });
+
+    tocList.innerHTML = '';
+
+    subjects.forEach(function (subj) {
+      var list = groups[subj];
+
+      // 同一学科内按日期降序（新的在前）
+      list.sort(function (a, b) {
+        if (a.date > b.date) return -1;
+        if (a.date < b.date) return 1;
+        return a.id.localeCompare(b.id);
+      });
+
+      var g = document.createElement('div');
+      g.className = 'toc-group';
+
+      var title = document.createElement('div');
+      title.className = 'toc-subject';
+      title.textContent = subj + '（' + list.length + '）';
+      g.appendChild(title);
+
+      var items = document.createElement('div');
+      items.className = 'toc-items';
+
+      list.forEach(function (e) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'toc-item';
+        btn.textContent = formatDate(e.date);
+        btn.title = e.id;
+
+        btn.addEventListener('click', function () {
+          var prev = tocList.querySelector('.toc-item.active');
+          if (prev) prev.classList.remove('active');
+          btn.classList.add('active');
+
+          dateInput.value = e.id;
+          handleLoad();
+        });
+
+        items.appendChild(btn);
+      });
+
+      g.appendChild(items);
+      tocList.appendChild(g);
+    });
+
+    setMsg(tocMsg, '', '');
   }
 
   /* ---------------- CSV / 表格 解析 ---------------- */
@@ -620,9 +789,7 @@
     }
   }
 
-  /* 处理已读入内存的 ArrayBuffer（不再依赖 File 对象） */
   function processBuffer(buffer, name, ext, mt) {
-    // Excel 系列
     if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
       ensureXLSX(function (ok) {
         if (!ok) {
@@ -650,13 +817,11 @@
       return;
     }
 
-    // 明显二进制文件
     if (/^(image|video|audio)\//.test(mt) || mt === 'application/pdf') {
       setMsg(loadMsg, '已选择 ' + name + '（' + (mt || '二进制文件') + '），无法作为表格显示。', 'error');
       return;
     }
 
-    // 其他按文本 / CSV 处理
     try {
       var text = decodeBuffer(buffer);
       var rows = parseCSV(text);
@@ -722,7 +887,7 @@
     reader.readAsArrayBuffer(f);
   });
 
-  /* ---------------- 班级查询（仅统计，不显示名单） ---------------- */
+  /* ---------------- 班级查询（仅统计） ---------------- */
 
   function doClassQuery() {
     if (!state.sheet) {
@@ -859,7 +1024,7 @@
     return card;
   }
 
-  /* ---------------- 姓名查询（必须完整精确匹配） ---------------- */
+  /* ---------------- 姓名查询（完整精确匹配） ---------------- */
 
   function doSearch() {
     if (!state.sheet) {
@@ -911,6 +1076,7 @@
   /* ---------------- 启动 ---------------- */
 
   loadNotice();
+  loadTOC();
 })();
 </script>
 </body>
