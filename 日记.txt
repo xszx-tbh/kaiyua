@@ -1,5 +1,5 @@
 {
-  "count": 11,
+  "count": 12,
   "entries": [
     {
       "localTime": "Sat Sep 26 2026 21:34:24 GMT+0800 (中国标准时间)",
@@ -234,6 +234,29 @@
     {
       "localTime": "Sat Sep 26 2026 21:51:19 GMT+0800 (中国标准时间)",
       "timestamp": "2026-09-26T13:51:19.178Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 EdgA/138.0.0.0",
+      "language": "zh-CN",
+      "languages": "zh-CN,zh",
+      "platform": "Linux armv81",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 4,
+      "maxTouchPoints": 2,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "600x960",
+      "availScreen": "600x960",
+      "colorDepth": 24,
+      "pixelRatio": 1.9389615058898926,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/#",
+      "referrer": ""
+    },
+    {
+      "localTime": "Sat Sep 26 2026 21:56:36 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-09-26T13:56:36.347Z",
       "ip": "",
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 EdgA/138.0.0.0",
       "language": "zh-CN",
