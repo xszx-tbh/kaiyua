@@ -1,5 +1,5 @@
 {
-  "count": 19,
+  "count": 20,
   "entries": [
     {
       "localTime": "Sat Sep 26 2026 21:34:24 GMT+0800 (中国标准时间)",
@@ -437,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": "https://weixin110.qq.com/"
+    },
+    {
+      "localTime": "Sat Sep 26 2026 15:34:53 GMT+0000 (Coordinated Universal Time)",
+      "timestamp": "2026-09-26T15:34:53.508Z",
+      "ip": "23.27.145.168",
+      "userAgent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "languages": "en-US,en",
+      "platform": "Win32",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 1,
+      "deviceMemory": 4,
+      "maxTouchPoints": 0,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "1600x1200",
+      "availScreen": "1600x1200",
+      "colorDepth": 24,
+      "pixelRatio": 1,
+      "timezone": "UTC",
+      "timezoneOffset": 0,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": ""
     }
   ]
 }
