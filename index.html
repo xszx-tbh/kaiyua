@@ -237,6 +237,9 @@
       <div class="row">
         <button id="trendBtn" class="btn-soft">查看个人以往成绩折线图</button>
       </div>
+      <div class="row" id="adminLogsRow" hidden>
+        <button id="adminLogsBtn" class="btn-soft">查看访问日志</button>
+      </div>
       <div id="loadMsg" class="msg"></div>
       <div id="rawTableWrap"></div>
       <input id="fileInput" type="file" hidden>
@@ -313,6 +316,22 @@
       <div id="trendSummary" class="trend-summary"></div>
     </div>
   </div>
+
+  <!-- ============ 访问日志视图（管理员） ============ -->
+  <div id="adminLogsView" hidden>
+    <div class="panel">
+      <button id="logsBackBtn" class="btn-soft" style="width:auto;">← 返回</button>
+    </div>
+
+    <div class="panel">
+      <label>访问日志</label>
+      <div class="row" style="margin-bottom:12px;">
+        <button id="logsRefreshBtn" class="btn-soft">刷新</button>
+      </div>
+      <div id="logsMsg" class="msg"></div>
+      <div id="logsContent"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -323,6 +342,7 @@
     sheet: null, label: '',
     tocEntries: [], trendPoints: [],
     idNameMap: null,
+    tokenConfig: null,
     adminMode: false
   };
 
@@ -373,7 +393,14 @@
       trendChart     = $('trendChart'),
       trendStats     = $('trendStats'),
       trendSummary   = $('trendSummary'),
-      adminBadge     = $('adminBadge');
+      adminBadge     = $('adminBadge'),
+      adminLogsRow   = $('adminLogsRow'),
+      adminLogsBtn   = $('adminLogsBtn'),
+      adminLogsView  = $('adminLogsView'),
+      logsBackBtn    = $('logsBackBtn'),
+      logsRefreshBtn = $('logsRefreshBtn'),
+      logsMsg        = $('logsMsg'),
+      logsContent    = $('logsContent');
 
   /* ---------------- 学科映射 ---------------- */
 
@@ -503,7 +530,7 @@
     return text;
   }
 
-  /* ---------------- 请求文本 ---------------- */
+  /* ---------------- 请求 ---------------- */
 
   function fetchText(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
@@ -525,7 +552,6 @@
     });
   }
 
-  /* 拿原始 buffer，不做文本解析 */
   function fetchBuffer(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
       if (!res.ok) {
@@ -537,7 +563,7 @@
     });
   }
 
-  /* ---------------- SheetJS 按需加载 ---------------- */
+  /* ---------------- SheetJS ---------------- */
 
   var xlsxStatus = 'none';
   var xlsxCallbacks = [];
@@ -566,7 +592,7 @@
     document.head.appendChild(s);
   }
 
-  /* ---------------- 根据扩展名把 buffer 解析成 rows ---------------- */
+  /* ---------------- buffer → rows ---------------- */
 
   function parseBufferToRows(buf, fileName) {
     var extMatch = fileName.match(/\.([^.]+)$/);
@@ -595,7 +621,6 @@
       });
     }
 
-    // 文本类文件
     var text = decodeBuffer(buf);
     if (/^\s*<(!doctype|html)/i.test(text)) {
       var e = new Error('NOT_FOUND_AS_HTML');
@@ -605,7 +630,7 @@
     return Promise.resolve(parseCSV(text));
   }
 
-  /* ---------------- 读取成绩单：多后缀尝试 ---------------- */
+  /* ---------------- 读取成绩单（多后缀尝试） ---------------- */
 
   function fetchSheetRows(inputName) {
     var base = inputName;
@@ -658,6 +683,108 @@
     });
   }
 
+  /* ---------------- 令牌.txt ---------------- */
+
+  function loadTokenConfig() {
+    return fetchText(sheetURL('令牌.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      if (lines[0]) lines[0] = lines[0].replace(/^\uFEFF/, '');
+      var token = (lines[0] || '').trim();
+      var secret = (lines[1] || '').trim();
+      var endpoint = (lines[2] || '').trim();
+      if (!token || !secret || !endpoint) throw new Error('内容不完整');
+      state.tokenConfig = { token: token, secret: secret, endpoint: endpoint };
+    }).catch(function () {
+      state.tokenConfig = null;
+    });
+  }
+
+  /* ---------------- 采集设备信息 ---------------- */
+
+  function collectDeviceInfo() {
+    var nav = navigator, scr = window.screen;
+    var info = {
+      userAgent: nav.userAgent || '',
+      language: nav.language || '',
+      languages: (nav.languages || []).join(','),
+      platform: nav.platform || '',
+      vendor: nav.vendor || '',
+      hardwareConcurrency: nav.hardwareConcurrency || 0,
+      deviceMemory: (typeof nav.deviceMemory === 'number') ? nav.deviceMemory : null,
+      maxTouchPoints: nav.maxTouchPoints || 0,
+      cookieEnabled: !!nav.cookieEnabled,
+      onLine: !!nav.onLine,
+      screen: scr ? (scr.width + 'x' + scr.height) : '',
+      availScreen: scr ? (scr.availWidth + 'x' + scr.availHeight) : '',
+      colorDepth: scr ? scr.colorDepth : 0,
+      pixelRatio: window.devicePixelRatio || 1,
+      timezone: '',
+      timezoneOffset: new Date().getTimezoneOffset(),
+      pageUrl: location.href,
+      referrer: document.referrer || '',
+      timestamp: new Date().toISOString(),
+      localTime: new Date().toString()
+    };
+    try {
+      info.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (e) {}
+    return info;
+  }
+
+  function fetchIP() {
+    return fetch('https://api.ipify.org?format=json', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return d && d.ip ? d.ip : ''; })
+      .catch(function () { return ''; });
+  }
+
+  /* ---------------- 上传访问信息 ---------------- */
+
+  function uploadVisitInfo() {
+    if (!state.tokenConfig) return;
+
+    fetchIP().then(function (ip) {
+      var info = collectDeviceInfo();
+      info.ip = ip;
+
+      var body = {
+        token: state.tokenConfig.token,
+        secret: state.tokenConfig.secret,
+        type: 'visit',
+        info: info
+      };
+
+      return fetch(state.tokenConfig.endpoint, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }).catch(function (e) {
+      // 静默失败，不影响主流程
+      try { console.warn('上传访问信息失败：', e && e.message ? e.message : e); } catch (err) {}
+    });
+  }
+
+  /* ---------------- 获取历史访问日志 ---------------- */
+
+  function fetchAdminLogs() {
+    if (!state.tokenConfig) return Promise.reject(new Error('未读取到令牌配置（令牌.txt）'));
+    return fetch(state.tokenConfig.endpoint, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: state.tokenConfig.token,
+        secret: state.tokenConfig.secret,
+        type: 'list'
+      })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
   /* ---------------- 考号名字库 ---------------- */
 
   function applyIdNameState() {
@@ -669,10 +796,12 @@
       nameInput.placeholder  = '如 张三';
       trendName.placeholder  = '如 张三';
       adminBadge.style.display = '';
+      adminLogsRow.hidden = false;
       return;
     }
 
     adminBadge.style.display = 'none';
+    adminLogsRow.hidden = true;
 
     var has = !!state.idNameMap;
     idRow.style.display = has ? '' : 'none';
@@ -742,7 +871,7 @@
     });
   }
 
-  /* ---------------- 标题三连击跳转 ---------------- */
+  /* ---------------- 标题三连击 ---------------- */
 
   var titleClickCount = 0;
   var titleClickTimer = null;
@@ -857,6 +986,23 @@
     }
 
     if (!records.length) throw new Error('没有解析到任何学生记录。');
+
+    /* 没有排名列：按总分自动排名（并列同名次，缺考不参与） */
+    if (col.rank === -1) {
+      var ranked = records.filter(function (r) { return r.absent === ''; });
+      ranked.sort(function (a, b) { return b.total - a.total; });
+
+      var lastScore = null;
+      var lastRank = 0;
+      for (var k = 0; k < ranked.length; k++) {
+        if (lastScore === null || ranked[k].total !== lastScore) {
+          lastRank = k + 1;
+          lastScore = ranked[k].total;
+        }
+        ranked[k].rank = String(lastRank);
+      }
+    }
+
     return { records: records, questions: questions };
   }
 
@@ -918,7 +1064,6 @@
   function handleLoad() {
     var raw = dateInput.value.trim();
 
-    // 检测 gly + 密码
     if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
       var pwd = raw.slice(3).trim();
       if (pwd) {
@@ -1297,11 +1442,25 @@
      ========================================================= */
 
   function applyRoute() {
-    var isTrend = location.hash === '#trend';
-    mainView.hidden = isTrend;
+    var hash = location.hash;
+    var isTrend = hash === '#trend';
+    var isLogs = hash === '#adminLogs';
+
+    if (isLogs && !state.adminMode) {
+      location.hash = '';
+      return;
+    }
+
+    mainView.hidden = isTrend || isLogs;
     trendView.hidden = !isTrend;
+    adminLogsView.hidden = !isLogs;
+
     if (isTrend) {
       renderTrendTOC();
+      window.scrollTo(0, 0);
+    }
+    if (isLogs) {
+      loadAdminLogs();
       window.scrollTo(0, 0);
     }
   }
@@ -1315,6 +1474,99 @@
     if (location.hash) location.hash = '';
     else applyRoute();
   });
+
+  adminLogsBtn.addEventListener('click', function () {
+    if (!state.adminMode) return;
+    if (location.hash !== '#adminLogs') location.hash = 'adminLogs';
+    else applyRoute();
+  });
+  logsBackBtn.addEventListener('click', function () {
+    if (location.hash) location.hash = '';
+    else applyRoute();
+  });
+  logsRefreshBtn.addEventListener('click', loadAdminLogs);
+
+  /* ---------------- 管理员：访问日志 ---------------- */
+
+  function loadAdminLogs() {
+    setMsg(logsMsg, '正在加载访问日志…', 'info');
+    logsContent.innerHTML = '';
+
+    if (!state.tokenConfig) {
+      setMsg(logsMsg, '未读取到令牌配置（令牌.txt 缺失或内容不完整）。', 'error');
+      return;
+    }
+
+    fetchAdminLogs().then(function (data) {
+      var records = [];
+      if (Array.isArray(data)) records = data;
+      else if (data && Array.isArray(data.records)) records = data.records;
+      else if (data && Array.isArray(data.data)) records = data.data;
+      else if (data && Array.isArray(data.list)) records = data.list;
+
+      if (!records.length) {
+        setMsg(logsMsg, '暂无访问记录。', 'info');
+        return;
+      }
+      setMsg(logsMsg, '共 ' + records.length + ' 条记录。', 'ok');
+      renderAdminLogs(records);
+    }).catch(function (e) {
+      setMsg(logsMsg, '获取失败：' + (e && e.message ? e.message : String(e)), 'error');
+    });
+  }
+
+  function renderAdminLogs(records) {
+    var cols = ['时间', 'IP', '浏览器', '屏幕', '语言', '平台', '时区'];
+
+    var wrap = document.createElement('div');
+    wrap.className = 'raw-table-wrap';
+
+    var table = document.createElement('table');
+    table.className = 'raw-table';
+
+    var thead = document.createElement('thead');
+    var trh = document.createElement('tr');
+    cols.forEach(function (c) {
+      var th = document.createElement('th');
+      th.textContent = c;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    records.forEach(function (rec) {
+      var info = (rec && rec.info) ? rec.info : (rec || {});
+      var ua = info.userAgent || '';
+      var uaShort = ua.length > 70 ? ua.slice(0, 70) + '…' : ua;
+
+      var time = info.localTime || info.timestamp || rec.timestamp || rec.time || '';
+      var values = [
+        time,
+        info.ip || rec.ip || '',
+        uaShort,
+        info.screen || '',
+        info.language || '',
+        info.platform || '',
+        info.timezone || ''
+      ];
+
+      var tr = document.createElement('tr');
+      values.forEach(function (v) {
+        var td = document.createElement('td');
+        td.textContent = v == null ? '' : String(v);
+        if (v && String(v).length > 70) td.title = String(v);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    wrap.appendChild(table);
+    logsContent.appendChild(wrap);
+  }
+
+  /* ---------------- 趋势视图 ---------------- */
 
   function renderTrendTOC() {
     var entries = state.tocEntries || [];
@@ -1769,6 +2021,9 @@
   loadNotice();
   loadTOC();
   loadIdName();
+  loadTokenConfig().then(function () {
+    uploadVisitInfo();
+  });
   applyRoute();
   applyIdNameState();
 })();
