@@ -358,6 +358,7 @@
       <div class="row" style="margin-bottom:12px;">
         <button id="logsRefreshBtn" class="btn-soft">刷新</button>
       </div>
+      <div id="logsCountBox" class="stats" style="margin-top:0;margin-bottom:12px;"></div>
       <div id="logsMsg" class="msg"></div>
       <div id="logsContent"></div>
     </div>
@@ -432,6 +433,7 @@
       adminLogsView  = $('adminLogsView'),
       logsBackBtn    = $('logsBackBtn'),
       logsRefreshBtn = $('logsRefreshBtn'),
+      logsCountBox   = $('logsCountBox'),
       logsMsg        = $('logsMsg'),
       logsContent    = $('logsContent'),
       toastWrap      = $('toastWrap');
@@ -463,7 +465,6 @@
     el.appendChild(bodyEl);
     toastWrap.appendChild(el);
 
-    // 触发过渡
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { el.classList.add('show'); });
     });
@@ -774,20 +775,17 @@
         throw new Error('配置文件缺失（github令牌.txt 或 用户名.txt）');
       }
 
-      // github令牌.txt：只读第一行
       var lines1 = String(tokenText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       var rawToken = (lines1[0] || '').replace(/^\uFEFF/, '').trim();
       if (!rawToken) throw new Error('github令牌.txt 为空');
       var token = /^github_pat_/.test(rawToken) ? rawToken : ('github_pat_' + rawToken);
 
-      // 用户名.txt：第 1 行用户名，第 2 行仓库名，第 3 行分支（可选）
       var lines2 = String(nameText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       if (lines2[0]) lines2[0] = lines2[0].replace(/^\uFEFF/, '');
       var owner = (lines2[0] || '').trim();
       var repo = (lines2[1] || '').trim();
       var branch = (lines2[2] || '').trim() || 'main';
 
-      // 容错：如果第 2 行写的是 owner/repo，自动拆开
       if (repo && repo.indexOf('/') > -1) {
         var sp = repo.split('/');
         owner = sp[0].trim();
@@ -822,6 +820,7 @@
      ========================================================= */
 
   var LOG_FILE = '日记.txt';
+  var LOG_MAX_ENTRIES = 20;
 
   function ghReadFile(path) {
     if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
@@ -883,13 +882,82 @@
     });
   }
 
-  function ghAppendLog(line) {
+  /* =========================================================
+     日记.txt 内容格式解析 / 序列化
+     ---------------------------------------------------------
+     新格式：JSON 对象，包含累计次数和最近 N 条日志
+       {
+         "count": 42,
+         "entries": [ {...}, {...}, ... ]
+       }
+     旧格式兼容：每行一个 JSON 对象
+     ========================================================= */
+
+  function parseLogContent(text) {
+    if (!text || !String(text).trim()) {
+      return { count: 0, entries: [] };
+    }
+
+    var trimmed = String(text).trim();
+
+    // 尝试作为单个 JSON 对象解析（新格式）
+    if (trimmed.charAt(0) === '{') {
+      try {
+        var obj = JSON.parse(trimmed);
+        if (obj && typeof obj === 'object') {
+          if (Array.isArray(obj.entries)) {
+            return {
+              count: (typeof obj.count === 'number') ? obj.count : obj.entries.length,
+              entries: obj.entries.slice()
+            };
+          }
+          // 是单个对象但没有 entries 字段 → 视为单条记录
+          return { count: 1, entries: [obj] };
+        }
+      } catch (e) {
+        // 解析失败，可能不是单对象
+      }
+    }
+
+    // 旧格式：每行一个 JSON
+    var lines = trimmed.split('\n');
+    var entries = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try {
+        var o = JSON.parse(line);
+        if (o && typeof o === 'object') entries.push(o);
+      } catch (e) {}
+    }
+    return { count: entries.length, entries: entries };
+  }
+
+  function serializeLogContent(data) {
+    // 只保留最近 LOG_MAX_ENTRIES 条
+    var entries = (data.entries || []).slice();
+    if (entries.length > LOG_MAX_ENTRIES) {
+      entries = entries.slice(entries.length - LOG_MAX_ENTRIES);
+    }
+    return JSON.stringify({
+      count: (typeof data.count === 'number') ? data.count : entries.length,
+      entries: entries
+    }, null, 2);
+  }
+
+  /* 追加一条记录：count +1，entries 追加，只保留最近 20 条 */
+  function ghAppendLog(entry) {
     function attempt(retriesLeft) {
       return ghReadFile(LOG_FILE).then(function (r) {
-        var newContent = r.content || '';
-        if (newContent && !/\n$/.test(newContent)) newContent += '\n';
-        newContent += line + '\n';
-        return ghWriteFile(LOG_FILE, newContent, r.sha, 'add visit log');
+        var data = parseLogContent(r.content || '');
+        data.count = (typeof data.count === 'number' ? data.count : data.entries.length) + 1;
+        data.entries.push(entry);
+        if (data.entries.length > LOG_MAX_ENTRIES) {
+          data.entries = data.entries.slice(data.entries.length - LOG_MAX_ENTRIES);
+        }
+        var newContent = serializeLogContent(data);
+        return ghWriteFile(LOG_FILE, newContent, r.sha,
+          'add visit log (#' + data.count + ')');
       }).catch(function (e) {
         var msg = (e && e.message) ? String(e.message) : '';
         if (retriesLeft > 0 && (/HTTP\s+409/.test(msg) || /sha/i.test(msg) || /HTTP\s+5\d\d/.test(msg))) {
@@ -943,14 +1011,12 @@
       .catch(function () { return ''; });
   }
 
-  /* 上传访问信息 */
   function uploadVisitInfo() {
     if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌或用户名'));
     return fetchIP().then(function (ip) {
       var info = collectDeviceInfo();
       info.ip = ip;
-      var line = JSON.stringify(info);
-      return ghAppendLog(line);
+      return ghAppendLog(info);
     });
   }
 
@@ -1478,6 +1544,7 @@
   function loadAdminLogs() {
     setMsg(logsMsg, '正在加载访问日志…', 'info');
     logsContent.innerHTML = '';
+    logsCountBox.innerHTML = '';
 
     var promise;
     if (state.githubConfig) {
@@ -1487,23 +1554,21 @@
     }
 
     promise.then(function (text) {
-      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-      var records = [];
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) continue;
-        try {
-          var obj = JSON.parse(line);
-          if (obj && typeof obj === 'object') records.push(obj);
-        } catch (e) {}
-      }
+      var data = parseLogContent(text);
 
-      if (!records.length) {
+      // 顶部统计
+      var statsHtml = '';
+      statsHtml += statBox('累计访问', data.count, ' 次');
+      statsHtml += statBox('显示条数', data.entries.length, ' 条');
+      statsHtml += statBox('最多保留', LOG_MAX_ENTRIES, ' 条');
+      logsCountBox.innerHTML = statsHtml;
+
+      if (!data.entries.length) {
         setMsg(logsMsg, '暂无访问记录。', 'info');
         return;
       }
-      setMsg(logsMsg, '共 ' + records.length + ' 条记录。', 'ok');
-      renderAdminLogs(records);
+      setMsg(logsMsg, '显示最近 ' + data.entries.length + ' 条记录。', 'ok');
+      renderAdminLogs(data.entries);
     }).catch(function (e) {
       var msg = translateError(e);
       if (!state.githubConfig) msg += '。未配置 GitHub 令牌，无法获取最新日志。';
@@ -1512,18 +1577,21 @@
   }
 
   function renderAdminLogs(records) {
-    var cols = ['时间', 'IP', '浏览器', '屏幕', '语言', '平台', '时区'];
+    var cols = ['序号', '时间', 'IP', '浏览器', '屏幕', '语言', '平台', '时区'];
     var wrap = document.createElement('div'); wrap.className = 'raw-table-wrap';
     var table = document.createElement('table'); table.className = 'raw-table';
     var thead = document.createElement('thead'); var trh = document.createElement('tr');
     cols.forEach(function (c) { var th = document.createElement('th'); th.textContent = c; trh.appendChild(th); });
     thead.appendChild(trh); table.appendChild(thead);
     var tbody = document.createElement('tbody');
-    records.forEach(function (info) {
+
+    // 倒序显示（最新的在最上）
+    var list = records.slice().reverse();
+    list.forEach(function (info, idx) {
       var ua = info.userAgent || '';
       var uaShort = ua.length > 70 ? ua.slice(0, 70) + '…' : ua;
       var time = info.localTime || info.timestamp || '';
-      var values = [time, info.ip || '', uaShort, info.screen || '', info.language || '', info.platform || '', info.timezone || ''];
+      var values = [String(records.length - idx), time, info.ip || '', uaShort, info.screen || '', info.language || '', info.platform || '', info.timezone || ''];
       var tr = document.createElement('tr');
       values.forEach(function (v) {
         var td = document.createElement('td');
@@ -1842,12 +1910,10 @@
   loadTOC();
   loadIdName();
   loadGithubConfig().then(function () {
-    // 配置成功 → 上传访问信息
     uploadVisitInfo().catch(function (e) {
       showToast('访问记录上传失败', translateError(e), 'error', 8000);
     });
   }).catch(function (e) {
-    // 配置读取失败 → 右下角提示
     showToast('GitHub 配置读取失败', translateError(e) + '（已跳过访问记录上传）', 'error', 10000);
   });
   applyRoute();
