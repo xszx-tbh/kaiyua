@@ -509,6 +509,8 @@
       return '浏览器禁止直接读取本地文件';
     if (/permission|could not be read|not be read/i.test(msg))
       return '浏览器已撤销对该文件的访问权限';
+    if (/Invalid HTML|could not find.*table/i.test(msg))
+      return '文件内容无法识别（可能是文件不存在或格式不正确）';
 
     var m = msg.match(/HTTP\s+(\d+)/i);
     if (m) {
@@ -649,10 +651,25 @@
     });
   }
 
+  /* 拉取原始字节；如果服务器返回 HTML（通常意味着文件不存在），
+     直接标记为 NOT_FOUND，避免下游解析库报 "Invalid HTML" 之类的错误 */
   function fetchBuffer(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
       if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
-      return res.arrayBuffer();
+      var ct = (res.headers.get('content-type') || '').toLowerCase();
+      return res.arrayBuffer().then(function (buf) {
+        if (ct.indexOf('text/html') > -1) {
+          var head = new TextDecoder('utf-8', { fatal: false })
+            .decode(new Uint8Array(buf).subarray(0, 300));
+          if (/^\s*<(!doctype|html)/i.test(head)) {
+            var e = new Error('NOT_FOUND_AS_HTML');
+            e.status = 404;
+            e.code = 'HTML_FALLBACK';
+            throw e;
+          }
+        }
+        return buf;
+      });
     });
   }
 
@@ -714,6 +731,7 @@
     return Promise.resolve(parseCSV(text));
   }
 
+  /* 多后缀尝试；所有候选都失败时区分“未找到”和“其它错误” */
   function fetchSheetRows(inputName) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
@@ -721,8 +739,25 @@
       base + '.txt', base + '.csv', base + '.xlsx', base + '.xls', base + '.xlsm', base + '.xlsb'
     ];
     var last = null;
+    var allNotFound = true;
+
+    function isNotFound(err) {
+      if (!err) return true;
+      if (err.status === 404) return true;
+      if (err.code === 'HTML_FALLBACK') return true;
+      if (err.code === 'NOT_FOUND') return true;
+      return false;
+    }
+
     function tryNext(i) {
-      if (i >= candidates.length) return Promise.reject(last);
+      if (i >= candidates.length) {
+        if (allNotFound || !last) {
+          var e = new Error('未找到成绩单 ' + base + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确');
+          e.code = 'NOT_FOUND';
+          return Promise.reject(e);
+        }
+        return Promise.reject(last);
+      }
       var fileName = candidates[i];
       var url = sheetURL(fileName);
       return fetchBuffer(url).then(function (buf) {
@@ -730,7 +765,9 @@
           return { rows: rows, fileName: fileName, url: url };
         });
       }).catch(function (err) {
-        err.url = url; err.fileName = fileName; last = err;
+        err.url = url; err.fileName = fileName;
+        if (!isNotFound(err)) allNotFound = false;
+        last = err;
         return tryNext(i + 1);
       });
     }
@@ -759,8 +796,6 @@
 
   /* =========================================================
      GitHub 配置读取
-     - github令牌.txt：仅一行，令牌（自动加 github_pat_ 前缀）
-     - 用户名.txt：第 1 行用户名，第 2 行仓库名（可选第 3 行分支）
      ========================================================= */
 
   function loadGithubConfig() {
@@ -816,7 +851,7 @@
   }
 
   /* =========================================================
-     GitHub API：读 / 写文件
+     GitHub API
      ========================================================= */
 
   var LOG_FILE = '日记.txt';
@@ -885,24 +920,11 @@
     });
   }
 
-  /* =========================================================
-     日记.txt 内容格式解析 / 序列化
-     ---------------------------------------------------------
-     新格式：JSON 对象，包含累计次数和最近 N 条日志
-       {
-         "count": 42,
-         "entries": [ {...}, {...}, ... ]
-       }
-     旧格式兼容：每行一个 JSON 对象
-     ========================================================= */
-
   function parseLogContent(text) {
     if (!text || !String(text).trim()) {
       return { count: 0, entries: [] };
     }
-
     var trimmed = String(text).trim();
-
     if (trimmed.charAt(0) === '{') {
       try {
         var obj = JSON.parse(trimmed);
@@ -917,7 +939,6 @@
         }
       } catch (e) {}
     }
-
     var lines = trimmed.split('\n');
     var entries = [];
     for (var i = 0; i < lines.length; i++) {
@@ -942,48 +963,28 @@
     }, null, 2);
   }
 
-  /* =========================================================
-     日记.txt 追加逻辑（带 SHA 自动刷新重试）
-     每次重试都重新读取最新的 content 和 sha，避免 409 冲突
-     ========================================================= */
-
   function ghAppendLog(entry) {
     var MAX_RETRIES = 5;
     var BASE_DELAY = 500;
 
     function attempt(retriesLeft) {
-      // 每次都重新读取最新内容和 SHA
       return ghReadFile(LOG_FILE).then(function (r) {
         var data = parseLogContent(r.content || '');
-
-        // 累计次数 +1
         data.count = (typeof data.count === 'number' ? data.count : data.entries.length) + 1;
-
-        // 追加新记录
         data.entries.push(entry);
-
-        // 只保留最近 20 条
         if (data.entries.length > LOG_MAX_ENTRIES) {
           data.entries = data.entries.slice(data.entries.length - LOG_MAX_ENTRIES);
         }
-
         var newContent = serializeLogContent(data);
-
-        // 用最新拿到的 SHA 写入
         return ghWriteFile(LOG_FILE, newContent, r.sha,
           'add visit log (#' + data.count + ')');
-
       }).catch(function (e) {
         var msg = (e && e.message) ? String(e.message) : '';
-
-        // 判断是否需要重试：409 冲突、SHA 不匹配、5xx 服务器错误
         var shouldRetry = /HTTP\s+409/.test(msg) ||
                          /does not match/.test(msg) ||
                          /sha/i.test(msg) ||
                          /HTTP\s+5\d\d/.test(msg);
-
         if (retriesLeft > 0 && shouldRetry) {
-          // 指数退避：500ms, 1000ms, 2000ms, 4000ms, 8000ms
           var delay = BASE_DELAY * Math.pow(2, MAX_RETRIES - retriesLeft);
           return new Promise(function (resolve) {
             setTimeout(resolve, delay);
@@ -991,11 +992,9 @@
             return attempt(retriesLeft - 1);
           });
         }
-
         throw e;
       });
     }
-
     return attempt(MAX_RETRIES);
   }
 
@@ -1179,7 +1178,7 @@
   }
 
   /* =========================================================
-     构建成绩单（含自动排名）
+     构建成绩单（含自动排名 + 按排名排序）
      ========================================================= */
 
   function buildSheet(rows) {
@@ -1224,6 +1223,7 @@
     }
     if (!records.length) throw new Error('没有解析到任何学生记录。');
 
+    // 若原始文件没有排名列，按总分从高到低自动排名（并列同名次，后续跳号）
     if (col.rank === -1) {
       var ranked = records.filter(function (r) { return r.absent === ''; });
       ranked.sort(function (a, b) { return b.total - a.total; });
@@ -1234,6 +1234,22 @@
       }
       records.forEach(function (r) { if (r.absent !== '') r.rank = ''; });
     }
+
+    /* 按排名升序排序；缺考或无效排名放到最后 */
+    function rankValue(rec) {
+      var r = String(rec.rank || '').trim();
+      if (!r || r === '0') return Number.POSITIVE_INFINITY;
+      var n = parseInt(r, 10);
+      return isFinite(n) ? n : Number.POSITIVE_INFINITY;
+    }
+    records.sort(function (a, b) {
+      var ra = rankValue(a);
+      var rb = rankValue(b);
+      if (ra !== rb) return ra - rb;
+      // 排名相同时按总分从高到低
+      return b.total - a.total;
+    });
+
     return { records: records, questions: questions };
   }
 
@@ -1260,7 +1276,10 @@
       catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return; }
       activateSheet(sheet, got.fileName);
     }).catch(function (err) {
-      if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
+      // 统一的“未找到”提示
+      if (err && err.code === 'NOT_FOUND') {
+        setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
+      } else if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
         setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
       } else {
         setMsg(loadMsg, '读取失败：' + translateError(err), 'error');
@@ -1441,9 +1460,10 @@
 
     if (state.adminMode) {
       var head = document.createElement('div'); head.className = 'list-head';
-      head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人</span>';
+      head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人（按排名排序）</span>';
       classListWrap.appendChild(head);
       var grid = document.createElement('div'); grid.className = 'stu-list';
+      // 已按排名排序（buildSheet 保证）
       list.forEach(function (rec) {
         var el = document.createElement('div'); el.className = 'stu';
         var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
@@ -1529,7 +1549,8 @@
       setMsg(searchMsg, state.adminMode ? '未找到包含“' + key + '”的学生。' : '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
       return;
     }
-    setMsg(searchMsg, '找到 ' + list.length + ' 条记录：', 'info');
+    // 结果已按排名排序（buildSheet 保证）
+    setMsg(searchMsg, '找到 ' + list.length + ' 条记录（按排名排序）：', 'info');
     list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
   }
 
@@ -1583,7 +1604,6 @@
 
     promise.then(function (text) {
       var data = parseLogContent(text);
-
       var statsHtml = '';
       statsHtml += statBox('累计访问', data.count, ' 次');
       statsHtml += statBox('显示条数', data.entries.length, ' 条');
@@ -1611,8 +1631,6 @@
     cols.forEach(function (c) { var th = document.createElement('th'); th.textContent = c; trh.appendChild(th); });
     thead.appendChild(trh); table.appendChild(thead);
     var tbody = document.createElement('tbody');
-
-    // 倒序显示（最新的在最上）
     var list = records.slice().reverse();
     list.forEach(function (info, idx) {
       var ua = info.userAgent || '';
