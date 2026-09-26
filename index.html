@@ -512,7 +512,7 @@
 
     var m = msg.match(/HTTP\s+(\d+)/i);
     if (m) {
-      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突','408':'请求超时','422':'数据格式错误','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
+      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突（可能有并发写入）','408':'请求超时','422':'数据格式错误','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
       return map[m[1]] || ('服务器返回错误 ' + m[1]);
     }
     return msg;
@@ -826,9 +826,11 @@
     if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
     var cfg = state.githubConfig;
     var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo +
-              '/contents/' + encodeURIComponent(path) + '?ref=' + encodeURIComponent(cfg.branch);
+              '/contents/' + encodeURIComponent(path) + '?ref=' + encodeURIComponent(cfg.branch) +
+              '&_t=' + Date.now();
 
     return fetch(url, {
+      cache: 'no-store',
       headers: {
         'Authorization': 'Bearer ' + cfg.token,
         'Accept': 'application/vnd.github+json',
@@ -863,6 +865,7 @@
 
     return fetch(url, {
       method: 'PUT',
+      cache: 'no-store',
       headers: {
         'Authorization': 'Bearer ' + cfg.token,
         'Accept': 'application/vnd.github+json',
@@ -900,7 +903,6 @@
 
     var trimmed = String(text).trim();
 
-    // 尝试作为单个 JSON 对象解析（新格式）
     if (trimmed.charAt(0) === '{') {
       try {
         var obj = JSON.parse(trimmed);
@@ -911,15 +913,11 @@
               entries: obj.entries.slice()
             };
           }
-          // 是单个对象但没有 entries 字段 → 视为单条记录
           return { count: 1, entries: [obj] };
         }
-      } catch (e) {
-        // 解析失败，可能不是单对象
-      }
+      } catch (e) {}
     }
 
-    // 旧格式：每行一个 JSON
     var lines = trimmed.split('\n');
     var entries = [];
     for (var i = 0; i < lines.length; i++) {
@@ -934,7 +932,6 @@
   }
 
   function serializeLogContent(data) {
-    // 只保留最近 LOG_MAX_ENTRIES 条
     var entries = (data.entries || []).slice();
     if (entries.length > LOG_MAX_ENTRIES) {
       entries = entries.slice(entries.length - LOG_MAX_ENTRIES);
@@ -945,30 +942,61 @@
     }, null, 2);
   }
 
-  /* 追加一条记录：count +1，entries 追加，只保留最近 20 条 */
+  /* =========================================================
+     日记.txt 追加逻辑（带 SHA 自动刷新重试）
+     每次重试都重新读取最新的 content 和 sha，避免 409 冲突
+     ========================================================= */
+
   function ghAppendLog(entry) {
+    var MAX_RETRIES = 5;
+    var BASE_DELAY = 500;
+
     function attempt(retriesLeft) {
+      // 每次都重新读取最新内容和 SHA
       return ghReadFile(LOG_FILE).then(function (r) {
         var data = parseLogContent(r.content || '');
+
+        // 累计次数 +1
         data.count = (typeof data.count === 'number' ? data.count : data.entries.length) + 1;
+
+        // 追加新记录
         data.entries.push(entry);
+
+        // 只保留最近 20 条
         if (data.entries.length > LOG_MAX_ENTRIES) {
           data.entries = data.entries.slice(data.entries.length - LOG_MAX_ENTRIES);
         }
+
         var newContent = serializeLogContent(data);
+
+        // 用最新拿到的 SHA 写入
         return ghWriteFile(LOG_FILE, newContent, r.sha,
           'add visit log (#' + data.count + ')');
+
       }).catch(function (e) {
         var msg = (e && e.message) ? String(e.message) : '';
-        if (retriesLeft > 0 && (/HTTP\s+409/.test(msg) || /sha/i.test(msg) || /HTTP\s+5\d\d/.test(msg))) {
-          return new Promise(function (r) { setTimeout(r, 400); }).then(function () {
+
+        // 判断是否需要重试：409 冲突、SHA 不匹配、5xx 服务器错误
+        var shouldRetry = /HTTP\s+409/.test(msg) ||
+                         /does not match/.test(msg) ||
+                         /sha/i.test(msg) ||
+                         /HTTP\s+5\d\d/.test(msg);
+
+        if (retriesLeft > 0 && shouldRetry) {
+          // 指数退避：500ms, 1000ms, 2000ms, 4000ms, 8000ms
+          var delay = BASE_DELAY * Math.pow(2, MAX_RETRIES - retriesLeft);
+          return new Promise(function (resolve) {
+            setTimeout(resolve, delay);
+          }).then(function () {
             return attempt(retriesLeft - 1);
           });
         }
+
         throw e;
       });
     }
-    return attempt(3);
+
+    return attempt(MAX_RETRIES);
   }
 
   /* =========================================================
@@ -1556,7 +1584,6 @@
     promise.then(function (text) {
       var data = parseLogContent(text);
 
-      // 顶部统计
       var statsHtml = '';
       statsHtml += statBox('累计访问', data.count, ' 次');
       statsHtml += statBox('显示条数', data.entries.length, ' 条');
