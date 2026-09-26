@@ -28,6 +28,39 @@
     border-radius:999px; vertical-align:middle;
   }
 
+  /* ===== 右下角提示框 ===== */
+  .toast-wrap{
+    position: fixed; right: 20px; bottom: 20px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 10px;
+    max-width: 340px; pointer-events: none;
+  }
+  .toast{
+    background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--bad);
+    border-radius: 10px; padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(16,24,40,.12);
+    font-size: 13px; line-height: 1.6; color: var(--txt);
+    pointer-events: auto; opacity: 0; transform: translateY(12px);
+    transition: opacity .25s ease, transform .25s ease;
+    word-break: break-word;
+  }
+  .toast.show{ opacity: 1; transform: translateY(0); }
+  .toast .toast-title{
+    font-weight: 700; color: var(--bad); margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .toast .toast-close{
+    cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1;
+    user-select: none; padding: 0 4px;
+  }
+  .toast .toast-close:hover{ color: var(--txt); }
+  .toast.ok{ border-left-color: var(--good); }
+  .toast.ok .toast-title{ color: var(--good); }
+  .toast.info{ border-left-color: var(--brand); }
+  .toast.info .toast-title{ color: var(--brand); }
+  @media (max-width:520px){
+    .toast-wrap{ right: 10px; left: 10px; bottom: 10px; max-width: none; }
+  }
+
   .notice{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:18px 20px; margin-bottom:18px;
@@ -331,6 +364,9 @@
   </div>
 </div>
 
+<!-- 右下角提示容器 -->
+<div class="toast-wrap" id="toastWrap"></div>
+
 <script>
 (function () {
   'use strict';
@@ -397,7 +433,54 @@
       logsBackBtn    = $('logsBackBtn'),
       logsRefreshBtn = $('logsRefreshBtn'),
       logsMsg        = $('logsMsg'),
-      logsContent    = $('logsContent');
+      logsContent    = $('logsContent'),
+      toastWrap      = $('toastWrap');
+
+  /* =========================================================
+     右下角提示框
+     ========================================================= */
+
+  function showToast(title, message, type, duration) {
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'error');
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'toast-title';
+    var spanTitle = document.createElement('span');
+    spanTitle.textContent = title;
+    var closeBtn = document.createElement('span');
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', function () { removeToast(el); });
+    titleEl.appendChild(spanTitle);
+    titleEl.appendChild(closeBtn);
+
+    var bodyEl = document.createElement('div');
+    bodyEl.className = 'toast-body';
+    bodyEl.textContent = message || '';
+
+    el.appendChild(titleEl);
+    el.appendChild(bodyEl);
+    toastWrap.appendChild(el);
+
+    // 触发过渡
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { el.classList.add('show'); });
+    });
+
+    var timer = setTimeout(function () { removeToast(el); }, duration || 6000);
+    el._timer = timer;
+    return el;
+  }
+
+  function removeToast(el) {
+    if (!el || !el.parentNode) return;
+    if (el._timer) { clearTimeout(el._timer); el._timer = null; }
+    el.classList.remove('show');
+    setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 260);
+  }
 
   /* =========================================================
      错误翻译
@@ -428,7 +511,7 @@
 
     var m = msg.match(/HTTP\s+(\d+)/i);
     if (m) {
-      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突','408':'请求超时','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
+      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突','408':'请求超时','422':'数据格式错误','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
       return map[m[1]] || ('服务器返回错误 ' + m[1]);
     }
     return msg;
@@ -674,30 +757,45 @@
   }
 
   /* =========================================================
-     GitHub 令牌.txt 读取
-     格式：
-       第1行：令牌（代码自动加 github_pat_ 前缀）
-       第2行：owner/repo
-       第3行：分支（可选，默认 main）
+     GitHub 配置读取
+     - github令牌.txt：仅一行，令牌（自动加 github_pat_ 前缀）
+     - 用户名.txt：第 1 行用户名，第 2 行仓库名（可选第 3 行分支）
      ========================================================= */
 
   function loadGithubConfig() {
-    return fetchText(sheetURL('github令牌.txt')).then(function (text) {
-      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-      if (lines[0]) lines[0] = lines[0].replace(/^\uFEFF/, '');
-      var rawToken = (lines[0] || '').trim();
-      var repoSpec = (lines[1] || '').trim();
-      var branch = (lines[2] || '').trim() || 'main';
+    return Promise.all([
+      fetchText(sheetURL('github令牌.txt')).catch(function () { return null; }),
+      fetchText(sheetURL('用户名.txt')).catch(function () { return null; })
+    ]).then(function (results) {
+      var tokenText = results[0];
+      var nameText = results[1];
 
-      if (!rawToken || !repoSpec) throw new Error('内容不完整');
+      if (tokenText == null || nameText == null) {
+        throw new Error('配置文件缺失（github令牌.txt 或 用户名.txt）');
+      }
 
-      // 若用户已经手动写了前缀，则不重复添加
+      // github令牌.txt：只读第一行
+      var lines1 = String(tokenText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var rawToken = (lines1[0] || '').replace(/^\uFEFF/, '').trim();
+      if (!rawToken) throw new Error('github令牌.txt 为空');
       var token = /^github_pat_/.test(rawToken) ? rawToken : ('github_pat_' + rawToken);
 
-      var parts = repoSpec.split('/');
-      if (parts.length < 2) throw new Error('仓库格式应为 owner/repo');
-      var owner = parts[0].trim();
-      var repo = parts.slice(1).join('/').trim();
+      // 用户名.txt：第 1 行用户名，第 2 行仓库名，第 3 行分支（可选）
+      var lines2 = String(nameText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      if (lines2[0]) lines2[0] = lines2[0].replace(/^\uFEFF/, '');
+      var owner = (lines2[0] || '').trim();
+      var repo = (lines2[1] || '').trim();
+      var branch = (lines2[2] || '').trim() || 'main';
+
+      // 容错：如果第 2 行写的是 owner/repo，自动拆开
+      if (repo && repo.indexOf('/') > -1) {
+        var sp = repo.split('/');
+        owner = sp[0].trim();
+        repo = sp.slice(1).join('/').trim();
+      }
+
+      if (!owner) throw new Error('用户名.txt 第一行（用户名）为空');
+      if (!repo) throw new Error('用户名.txt 第二行（仓库名）为空');
 
       state.githubConfig = {
         token: token,
@@ -705,13 +803,11 @@
         repo: repo,
         branch: branch
       };
-    }).catch(function () {
-      state.githubConfig = null;
     });
   }
 
   /* =========================================================
-     Base64（支持中文）
+     Base64
      ========================================================= */
 
   function b64EncodeUTF8(str) {
@@ -787,7 +883,6 @@
     });
   }
 
-  /* 追加一行到 日记.txt（带回退重试） */
   function ghAppendLog(line) {
     function attempt(retriesLeft) {
       return ghReadFile(LOG_FILE).then(function (r) {
@@ -850,14 +945,12 @@
 
   /* 上传访问信息 */
   function uploadVisitInfo() {
-    if (!state.githubConfig) return;
-    fetchIP().then(function (ip) {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌或用户名'));
+    return fetchIP().then(function (ip) {
       var info = collectDeviceInfo();
       info.ip = ip;
       var line = JSON.stringify(info);
       return ghAppendLog(line);
-    }).catch(function (e) {
-      try { console.warn('上传访问信息失败：', translateError(e)); } catch (err) {}
     });
   }
 
@@ -1380,7 +1473,6 @@
 
   /* =========================================================
      管理员：访问日志
-     优先从 GitHub API 拉取最新 日记.txt；未配置 GitHub 时回退到同目录 fetch
      ========================================================= */
 
   function loadAdminLogs() {
@@ -1403,9 +1495,7 @@
         try {
           var obj = JSON.parse(line);
           if (obj && typeof obj === 'object') records.push(obj);
-        } catch (e) {
-          // 非 JSON 行，跳过
-        }
+        } catch (e) {}
       }
 
       if (!records.length) {
@@ -1416,9 +1506,7 @@
       renderAdminLogs(records);
     }).catch(function (e) {
       var msg = translateError(e);
-      if (!state.githubConfig) {
-        msg += '。未配置 GitHub 令牌，无法获取最新日志。';
-      }
+      if (!state.githubConfig) msg += '。未配置 GitHub 令牌，无法获取最新日志。';
       setMsg(logsMsg, '获取失败：' + msg, 'error');
     });
   }
@@ -1753,7 +1841,15 @@
   loadNotice();
   loadTOC();
   loadIdName();
-  loadGithubConfig().then(function () { uploadVisitInfo(); });
+  loadGithubConfig().then(function () {
+    // 配置成功 → 上传访问信息
+    uploadVisitInfo().catch(function (e) {
+      showToast('访问记录上传失败', translateError(e), 'error', 8000);
+    });
+  }).catch(function (e) {
+    // 配置读取失败 → 右下角提示
+    showToast('GitHub 配置读取失败', translateError(e) + '（已跳过访问记录上传）', 'error', 10000);
+  });
   applyRoute();
   applyIdNameState();
 })();
