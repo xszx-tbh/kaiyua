@@ -20,9 +20,7 @@
     font-size:22px;margin:0 0 20px;text-align:center;letter-spacing:1px;
     line-height:1.5;font-weight:700;
   }
-  @media (max-width:520px){
-    h1{font-size:18px;letter-spacing:0;}
-  }
+  @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;} }
 
   .notice{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
@@ -157,7 +155,6 @@
     padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;font-weight:500;
   }
 
-  /* 进度条 */
   .progress-bar{
     height: 10px; background: #eaf0ff; border-radius: 5px; overflow: hidden;
     margin-top: 6px;
@@ -172,7 +169,6 @@
   }
   .progress-label b { color: var(--brand); }
 
-  /* 图表 */
   .chart-wrap{
     position: relative; margin-top: 10px;
     background: #fbfcfe; border: 1px solid var(--line); border-radius: 10px;
@@ -232,7 +228,10 @@
     </div>
 
     <div class="panel" id="searchPanel" hidden>
-      <label for="nameInput">姓名（需完整输入）</label>
+      <label id="searchLabel" for="nameInput">姓名（需完整输入）</label>
+      <div class="row" id="idRow" style="display:none;">
+        <input id="idInput" type="text" placeholder="考号（如 202630101）" autocomplete="off">
+      </div>
       <div class="row">
         <input id="nameInput" type="text" placeholder="如 张三" autocomplete="off">
         <button id="searchBtn">查询</button>
@@ -250,7 +249,10 @@
     </div>
 
     <div class="panel">
-      <label for="trendName">姓名（需完整输入）</label>
+      <label id="trendLabel" for="trendName">姓名（需完整输入）</label>
+      <div class="row" id="trendIdRow" style="display:none;">
+        <input id="trendId" type="text" placeholder="考号（如 202630101）" autocomplete="off">
+      </div>
       <div class="row">
         <input id="trendName" type="text" placeholder="如 张三" autocomplete="off">
         <button id="trendStartBtn">开始查询</button>
@@ -291,7 +293,7 @@
 (function () {
   'use strict';
 
-  var state = { sheet: null, label: '', tocEntries: [], trendPoints: [] };
+  var state = { sheet: null, label: '', tocEntries: [], trendPoints: [], idNameMap: null };
 
   var $ = function (id) { return document.getElementById(id); };
   var dateInput      = $('dateInput'),
@@ -303,6 +305,9 @@
       classMsg       = $('classMsg'),
       classStats     = $('classStats'),
       searchPanel    = $('searchPanel'),
+      searchLabel    = $('searchLabel'),
+      idRow          = $('idRow'),
+      idInput        = $('idInput'),
       nameInput      = $('nameInput'),
       searchBtn      = $('searchBtn'),
       searchMsg      = $('searchMsg'),
@@ -318,6 +323,9 @@
       trendView      = $('trendView'),
       trendBtn       = $('trendBtn'),
       backBtn        = $('backBtn'),
+      trendLabel     = $('trendLabel'),
+      trendIdRow     = $('trendIdRow'),
+      trendId        = $('trendId'),
       trendName      = $('trendName'),
       trendStartBtn  = $('trendStartBtn'),
       trendMsg       = $('trendMsg'),
@@ -524,84 +532,58 @@
     });
   }
 
-  /* ---------------- 考试目录（ml.txt） ---------------- */
+  /* ---------------- 考号名字库 ---------------- */
 
-  function loadTOC() {
-    fetchText(sheetURL('ml.txt')).then(function (text) {
-      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-      var entries = [];
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line || line.charAt(0) === '#') continue;
-        entries.push(parseSheetId(line));
+  function applyIdNameState() {
+    var has = !!state.idNameMap;
+    idRow.style.display = has ? '' : 'none';
+    trendIdRow.style.display = has ? '' : 'none';
+    searchLabel.textContent = has ? '姓名与考号（需完整匹配）' : '姓名（需完整输入）';
+    trendLabel.textContent  = has ? '姓名与考号（需完整匹配）' : '姓名（需完整输入）';
+    nameInput.placeholder  = has ? '姓名' : '如 张三';
+    trendName.placeholder  = has ? '姓名' : '如 张三';
+  }
+
+  function loadIdName() {
+    return fetchText(sheetURL('考号名字.txt')).then(function (text) {
+      var rows = parseCSV(text);
+      if (!rows.length) throw new Error('空文件');
+
+      var header = rows[0];
+      var idIdx = -1, nameIdx = -1;
+      for (var i = 0; i < header.length; i++) {
+        var h = String(header[i] || '').replace(/^\uFEFF/, '').trim();
+        if (h === '考号' && idIdx === -1) idIdx = i;
+        if (h === '姓名' && nameIdx === -1) nameIdx = i;
       }
-      state.tocEntries = entries;
-      if (!entries.length) { tocPanel.hidden = true; return; }
-      renderTOC(entries);
-      tocPanel.hidden = false;
+      if (idIdx === -1 || nameIdx === -1) throw new Error('未找到“考号/姓名”列');
+
+      var map = Object.create(null);
+      for (var j = 1; j < rows.length; j++) {
+        var r = rows[j];
+        if (!r) continue;
+        var id = String(r[idIdx] == null ? '' : r[idIdx]).trim();
+        var nm = String(r[nameIdx] == null ? '' : r[nameIdx]).trim();
+        if (id && nm) map[id] = nm;
+      }
+      if (!Object.keys(map).length) throw new Error('无有效数据');
+
+      state.idNameMap = map;
     }).catch(function () {
-      state.tocEntries = [];
-      tocPanel.hidden = true;
+      state.idNameMap = null;
+    }).then(function () {
+      applyIdNameState();
     });
   }
 
-  function sortSubjects(subjects) {
-    subjects.sort(function (a, b) {
-      var ia = SUBJECT_ORDER.indexOf(a);
-      var ib = SUBJECT_ORDER.indexOf(b);
-      if (ia === -1) ia = 1000;
-      if (ib === -1) ib = 1000;
-      if (ia !== ib) return ia - ib;
-      return a.localeCompare(b, 'zh');
-    });
-    return subjects;
-  }
-
-  function renderTOC(entries) {
-    var groups = {};
-    entries.forEach(function (e) {
-      if (!groups[e.subject]) groups[e.subject] = [];
-      groups[e.subject].push(e);
-    });
-    var subjects = sortSubjects(Object.keys(groups));
-
-    tocList.innerHTML = '';
-    subjects.forEach(function (subj) {
-      var list = groups[subj].slice().sort(function (a, b) {
-        return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
-      });
-
-      var g = document.createElement('div');
-      g.className = 'toc-group';
-
-      var title = document.createElement('div');
-      title.className = 'toc-subject';
-      title.textContent = subj + '（' + list.length + '）';
-      g.appendChild(title);
-
-      var items = document.createElement('div');
-      items.className = 'toc-items';
-
-      list.forEach(function (e) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'toc-item';
-        btn.textContent = formatDate(e.date);
-        btn.title = e.id;
-        btn.addEventListener('click', function () {
-          var prev = tocList.querySelector('.toc-item.active');
-          if (prev) prev.classList.remove('active');
-          btn.classList.add('active');
-          dateInput.value = e.id;
-          handleLoad();
-        });
-        items.appendChild(btn);
-      });
-      g.appendChild(items);
-      tocList.appendChild(g);
-    });
-
-    setMsg(tocMsg, '', '');
+  /* 校验：返回 null 表示通过，否则返回错误字符串 */
+  function validateIdName(id, name) {
+    if (!state.idNameMap) return null; // 未加载考号库，跳过校验
+    if (!id) return '请输入考号。';
+    var expected = state.idNameMap[id];
+    if (!expected) return '未找到考号“' + id + '”，请检查后重试。';
+    if (expected !== name) return '考号与姓名不匹配，请检查后重试。';
+    return null;
   }
 
   /* ---------------- CSV 解析 ---------------- */
@@ -722,6 +704,7 @@
     searchPanel.hidden = false;
 
     classInput.value = '';
+    idInput.value = '';
     nameInput.value = '';
     classStats.innerHTML = '';
     setMsg(classMsg, '', '');
@@ -895,6 +878,86 @@
     }
   }
 
+  /* ---------------- 考试目录（ml.txt） ---------------- */
+
+  function loadTOC() {
+    fetchText(sheetURL('ml.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var entries = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || line.charAt(0) === '#') continue;
+        entries.push(parseSheetId(line));
+      }
+      state.tocEntries = entries;
+      if (!entries.length) { tocPanel.hidden = true; return; }
+      renderTOC(entries);
+      tocPanel.hidden = false;
+    }).catch(function () {
+      state.tocEntries = [];
+      tocPanel.hidden = true;
+    });
+  }
+
+  function sortSubjects(subjects) {
+    subjects.sort(function (a, b) {
+      var ia = SUBJECT_ORDER.indexOf(a);
+      var ib = SUBJECT_ORDER.indexOf(b);
+      if (ia === -1) ia = 1000;
+      if (ib === -1) ib = 1000;
+      if (ia !== ib) return ia - ib;
+      return a.localeCompare(b, 'zh');
+    });
+    return subjects;
+  }
+
+  function renderTOC(entries) {
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+    var subjects = sortSubjects(Object.keys(groups));
+
+    tocList.innerHTML = '';
+    subjects.forEach(function (subj) {
+      var list = groups[subj].slice().sort(function (a, b) {
+        return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
+      });
+
+      var g = document.createElement('div');
+      g.className = 'toc-group';
+
+      var title = document.createElement('div');
+      title.className = 'toc-subject';
+      title.textContent = subj + '（' + list.length + '）';
+      g.appendChild(title);
+
+      var items = document.createElement('div');
+      items.className = 'toc-items';
+
+      list.forEach(function (e) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'toc-item';
+        btn.textContent = formatDate(e.date);
+        btn.title = e.id;
+        btn.addEventListener('click', function () {
+          var prev = tocList.querySelector('.toc-item.active');
+          if (prev) prev.classList.remove('active');
+          btn.classList.add('active');
+          dateInput.value = e.id;
+          handleLoad();
+        });
+        items.appendChild(btn);
+      });
+      g.appendChild(items);
+      tocList.appendChild(g);
+    });
+
+    setMsg(tocMsg, '', '');
+  }
+
   /* ---------------- 班级查询（仅统计） ---------------- */
 
   function doClassQuery() {
@@ -933,7 +996,7 @@
 
     setMsg(classMsg, (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
       (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '') +
-      ' · 如需查看个人成绩，请在下方输入完整姓名。', 'info');
+      ' · 如需查看个人成绩，请在下方输入姓名（及考号）。', 'info');
   }
 
   function statBox(label, value, unit, warn) {
@@ -1021,10 +1084,15 @@
 
   function doSearch() {
     if (!state.sheet) { setMsg(searchMsg, '请先读取成绩单。', 'error'); return; }
+
     var key = nameInput.value.trim();
+    var id  = idInput.value.trim();
     resultEl.innerHTML = '';
 
     if (!key) { setMsg(searchMsg, '请输入完整姓名。', 'error'); return; }
+
+    var err = validateIdName(id, key);
+    if (err) { setMsg(searchMsg, err, 'error'); return; }
 
     var list = state.sheet.records.filter(function (r) { return r.name === key; });
     if (!list.length) {
@@ -1039,7 +1107,6 @@
      个人成绩趋势
      ========================================================= */
 
-  /* ---- 路由 ---- */
   function applyRoute() {
     var isTrend = location.hash === '#trend';
     mainView.hidden = isTrend;
@@ -1052,7 +1119,7 @@
   window.addEventListener('hashchange', applyRoute);
 
   trendBtn.addEventListener('click', function () {
-    if (!location.hash || location.hash !== '#trend') location.hash = 'trend';
+    if (location.hash !== '#trend') location.hash = 'trend';
     else applyRoute();
   });
   backBtn.addEventListener('click', function () {
@@ -1060,7 +1127,6 @@
     else applyRoute();
   });
 
-  /* ---- 渲染考试选择列表 ---- */
   function renderTrendTOC() {
     var entries = state.tocEntries || [];
     if (!entries.length) {
@@ -1104,7 +1170,6 @@
     for (var i = 0; i < cbs.length; i++) cbs[i].checked = false;
   });
 
-  /* ---- 进度条 ---- */
   function updateProgress(done, total, label) {
     var pct = total ? Math.round(done / total * 100) : 0;
     progressInner.style.width = pct + '%';
@@ -1112,7 +1177,6 @@
     progressText.textContent = label || ('已完成 ' + done + ' / ' + total);
   }
 
-  /* ---- 从单份成绩单里找学生 ---- */
   function findStudentInRows(rows, name) {
     if (!rows || !rows.length) return null;
     var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
@@ -1138,10 +1202,14 @@
     return null;
   }
 
-  /* ---- 开始查询 ---- */
   function startTrendQuery() {
     var name = trendName.value.trim();
+    var id   = trendId.value.trim();
+
     if (!name) { setMsg(trendMsg, '请输入完整姓名。', 'error'); return; }
+
+    var err = validateIdName(id, name);
+    if (err) { setMsg(trendMsg, err, 'error'); return; }
 
     var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
     var selected = [];
@@ -1157,7 +1225,6 @@
     trendStartBtn.disabled = true;
     trendStartBtn.textContent = '查询中…';
 
-    // 按日期升序
     var entriesMap = {};
     (state.tocEntries || []).forEach(function (e) { entriesMap[e.id] = e; });
 
@@ -1174,17 +1241,17 @@
     function next() {
       if (idx >= selected.length) { finishTrendQuery(results, errors); return; }
 
-      var id = selected[idx];
-      var entry = entriesMap[id] || parseSheetId(id);
-      updateProgress(idx, selected.length, '正在读取 ' + id + '…');
+      var id2 = selected[idx];
+      var entry = entriesMap[id2] || parseSheetId(id2);
+      updateProgress(idx, selected.length, '正在读取 ' + id2 + '…');
 
-      fetchSheet(id).then(function (got) {
+      fetchSheet(id2).then(function (got) {
         try {
           var rows = parseCSV(got.text);
           var rec = findStudentInRows(rows, name);
           if (rec) {
             results.push({
-              id: id,
+              id: id2,
               date: entry.date,
               subject: entry.subject,
               label: formatDateShort(entry.date),
@@ -1195,16 +1262,16 @@
               absent: rec.absent
             });
           } else {
-            errors.push({ id: id, msg: '未找到该学生' });
+            errors.push({ id: id2, msg: '未找到该学生' });
           }
         } catch (e) {
-          errors.push({ id: id, msg: '解析失败' });
+          errors.push({ id: id2, msg: '解析失败' });
         }
         idx++;
         updateProgress(idx, selected.length);
         next();
       }).catch(function () {
-        errors.push({ id: id, msg: '读取失败' });
+        errors.push({ id: id2, msg: '读取失败' });
         idx++;
         updateProgress(idx, selected.length);
         next();
@@ -1243,14 +1310,12 @@
 
     state.trendPoints = valid;
 
-    // 让浏览器完成布局后再绘制，保证 canvas 有实际宽度
     requestAnimationFrame(function () {
       drawChart(valid);
       renderTrendStats(valid, errors);
     });
   }
 
-  /* ---- 折线图 ---- */
   function drawChart(points) {
     var canvas = trendChart;
     var wrap = canvas.parentNode;
@@ -1287,7 +1352,6 @@
       return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
     }
 
-    // 网格
     ctx.strokeStyle = '#e4e9f2';
     ctx.lineWidth = 1;
     var ySteps = 5;
@@ -1306,7 +1370,6 @@
       ctx.fillText(String(Math.round(v)), padL - 6, y);
     }
 
-    // 折线
     ctx.strokeStyle = '#3b6cf6';
     ctx.lineWidth = 2.4;
     ctx.lineJoin = 'round';
@@ -1317,7 +1380,6 @@
     });
     ctx.stroke();
 
-    // 数据点 + 分数标注
     points.forEach(function (p, i) {
       var x = xPos(i), y = yPos(p.total);
 
@@ -1336,7 +1398,6 @@
       ctx.fillText(String(Math.round(p.total)), x, y - 8);
     });
 
-    // X 轴标签
     var labelStep = points.length > 12 ? Math.ceil(points.length / 9) : 1;
     points.forEach(function (p, i) {
       if (i % labelStep !== 0 && i !== points.length - 1) return;
@@ -1353,7 +1414,6 @@
     });
   }
 
-  /* ---- 统计与文字描述 ---- */
   function renderTrendStats(points, errors) {
     var n = points.length;
     var scores = points.map(function (p) { return p.total; });
@@ -1365,13 +1425,11 @@
     var maxIdx = scores.indexOf(maxV);
     var minIdx = scores.indexOf(minV);
 
-    // 标准差
     var variance = 0;
     for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
     variance /= n;
     var std = Math.sqrt(variance);
 
-    // 线性回归斜率
     var slope = 0;
     if (n > 1) {
       var xSum = 0, ySum = 0, xySum = 0, x2Sum = 0;
@@ -1384,7 +1442,6 @@
       if (denom !== 0) slope = (n * xySum - xSum * ySum) / denom;
     }
 
-    // 趋势描述
     var trendText;
     if (n < 2) trendText = '数据点不足';
     else if (slope > 1) trendText = '明显上升';
@@ -1393,7 +1450,6 @@
     else if (slope < -0.3) trendText = '略有下降';
     else trendText = '基本平稳';
 
-    // 起伏描述
     var waveText;
     if (n < 2) waveText = '数据点不足';
     else if (std < 3) waveText = '非常稳定';
@@ -1401,7 +1457,6 @@
     else if (std < 12) waveText = '波动较大';
     else waveText = '波动很大';
 
-    // 统计卡片
     var html = '';
     html += statBox('有效次数', n, ' 次');
     html += statBox('平均分', fmt1(avg), ' 分');
@@ -1411,7 +1466,6 @@
     html += statBox('波动幅度', fmt(maxV - minV), ' 分');
     trendStats.innerHTML = html;
 
-    // 描述文字
     var parts = [];
     parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
     parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
@@ -1427,7 +1481,6 @@
     trendSummary.innerHTML = text;
   }
 
-  /* ---- 窗口大小变化时重绘 ---- */
   var resizeTimer = null;
   window.addEventListener('resize', function () {
     if (!state.trendPoints || !state.trendPoints.length) return;
@@ -1452,7 +1505,9 @@
   dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
   classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
   nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+  idInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
   trendName.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
+  trendId.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
 
   pickFile.addEventListener('click', function () {
     fileInput.value = '';
@@ -1523,7 +1578,9 @@
 
   loadNotice();
   loadTOC();
+  loadIdName();
   applyRoute();
+  applyIdNameState();
 })();
 </script>
 </body>
