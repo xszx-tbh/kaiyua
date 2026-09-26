@@ -43,7 +43,6 @@
   .notice-body.fail{ color:var(--bad); }
   .notice-body.loading{ color:var(--muted); }
 
-  /* 考试目录 */
   .toc-group { margin-bottom: 14px; }
   .toc-group:last-child { margin-bottom: 0; }
   .toc-subject {
@@ -62,6 +61,17 @@
   }
   .toc-item:hover:not(:disabled) { background: #dbe6ff; }
   .toc-item.active { background: var(--brand); color: #fff; }
+
+  .trend-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .trend-check {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #f7f9fd; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 10px; font-size: 13px; cursor: pointer; user-select: none;
+    transition:.15s;
+  }
+  .trend-check:hover { border-color: var(--brand); background: #eef3ff; }
+  .trend-check input { margin: 0; accent-color: var(--brand); }
+  .trend-check .t-id { color: var(--muted); font-size: 11px; font-family: ui-monospace,Menlo,Consolas,monospace; }
 
   .panel{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
@@ -85,6 +95,7 @@
   button:disabled{background:#c3ccdb;cursor:not-allowed;}
   button.btn-soft{background:#eaf0ff;color:var(--brand);flex:1;}
   button.btn-soft:hover:not(:disabled){background:#dbe6ff;}
+  button.btn-block{width:100%;}
   .msg{margin-top:10px;font-size:13px;line-height:1.7;word-break:break-all;}
   .msg:empty{display:none;}
   .msg.error{color:var(--bad);}
@@ -145,65 +156,142 @@
     display:inline-block;background:#fdecec;color:var(--bad);font-size:11px;
     padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;font-weight:500;
   }
+
+  /* 进度条 */
+  .progress-bar{
+    height: 10px; background: #eaf0ff; border-radius: 5px; overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-inner{
+    height: 100%; width: 0%; background: linear-gradient(90deg, #3b6cf6, #6b8cff);
+    border-radius: 5px; transition: width .25s ease;
+  }
+  .progress-label{
+    font-size: 13px; color: var(--muted); margin-top: 8px;
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+  .progress-label b { color: var(--brand); }
+
+  /* 图表 */
+  .chart-wrap{
+    position: relative; margin-top: 10px;
+    background: #fbfcfe; border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 4px;
+  }
+  .chart-wrap canvas{ display: block; width: 100%; height: 340px; }
+
+  .trend-summary{
+    margin-top: 14px; font-size: 14px; line-height: 1.8; color: var(--txt);
+  }
+  .trend-summary b{ color: var(--brand); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>广州开元学校高一学生成绩查询</h1>
 
-  <div class="notice">
-    <div class="notice-title">公告</div>
-    <div class="notice-body loading" id="noticeBody">公告加载中…</div>
-  </div>
-
-  <div class="panel" id="tocPanel" hidden>
-    <label>考试目录</label>
-    <div id="tocList"></div>
-    <div id="tocMsg" class="msg"></div>
-  </div>
-
-  <div class="panel">
-    <label for="dateInput">考试日期 / 文件名</label>
-    <div class="row">
-      <input id="dateInput" type="text" maxlength="60"
-             placeholder="如 20260922 或 yy20260915" autocomplete="off">
-      <button id="loadBtn">读取</button>
+  <!-- ============ 主视图 ============ -->
+  <div id="mainView">
+    <div class="notice">
+      <div class="notice-title">公告</div>
+      <div class="notice-body loading" id="noticeBody">公告加载中…</div>
     </div>
-    <div class="row">
-      <button id="pickFile" class="btn-soft">选择本地文件（任意表格）</button>
+
+    <div class="panel" id="tocPanel" hidden>
+      <label>考试目录</label>
+      <div id="tocList"></div>
+      <div id="tocMsg" class="msg"></div>
     </div>
-    <div id="loadMsg" class="msg"></div>
-    <div id="rawTableWrap"></div>
-    <input id="fileInput" type="file" hidden>
+
+    <div class="panel">
+      <label for="dateInput">考试日期 / 文件名</label>
+      <div class="row">
+        <input id="dateInput" type="text" maxlength="60"
+               placeholder="如 20260922 或 yy20260915" autocomplete="off">
+        <button id="loadBtn">读取</button>
+      </div>
+      <div class="row">
+        <button id="pickFile" class="btn-soft">选择本地文件（任意表格）</button>
+      </div>
+      <div class="row">
+        <button id="trendBtn" class="btn-soft">查看个人以往成绩折线图</button>
+      </div>
+      <div id="loadMsg" class="msg"></div>
+      <div id="rawTableWrap"></div>
+      <input id="fileInput" type="file" hidden>
+    </div>
+
+    <div class="panel" id="classPanel" hidden>
+      <label for="classInput">班级（仅显示统计）</label>
+      <div class="row">
+        <input id="classInput" type="text" placeholder="如 1班 或 1" autocomplete="off">
+        <button id="classBtn">查询</button>
+      </div>
+      <div id="classMsg" class="msg"></div>
+      <div id="classStats" class="stats"></div>
+    </div>
+
+    <div class="panel" id="searchPanel" hidden>
+      <label for="nameInput">姓名（需完整输入）</label>
+      <div class="row">
+        <input id="nameInput" type="text" placeholder="如 张三" autocomplete="off">
+        <button id="searchBtn">查询</button>
+      </div>
+      <div id="searchMsg" class="msg"></div>
+    </div>
+
+    <div id="result"></div>
   </div>
 
-  <div class="panel" id="classPanel" hidden>
-    <label for="classInput">班级（仅显示统计）</label>
-    <div class="row">
-      <input id="classInput" type="text" placeholder="如 1班 或 1" autocomplete="off">
-      <button id="classBtn">查询</button>
+  <!-- ============ 趋势视图 ============ -->
+  <div id="trendView" hidden>
+    <div class="panel">
+      <button id="backBtn" class="btn-soft" style="width:auto;">← 返回</button>
     </div>
-    <div id="classMsg" class="msg"></div>
-    <div id="classStats" class="stats"></div>
-  </div>
 
-  <div class="panel" id="searchPanel" hidden>
-    <label for="nameInput">姓名（需完整输入）</label>
-    <div class="row">
-      <input id="nameInput" type="text" placeholder="如 张三" autocomplete="off">
-      <button id="searchBtn">查询</button>
+    <div class="panel">
+      <label for="trendName">姓名（需完整输入）</label>
+      <div class="row">
+        <input id="trendName" type="text" placeholder="如 张三" autocomplete="off">
+        <button id="trendStartBtn">开始查询</button>
+      </div>
+      <div id="trendMsg" class="msg"></div>
     </div>
-    <div id="searchMsg" class="msg"></div>
-  </div>
 
-  <div id="result"></div>
+    <div class="panel">
+      <label>选择要显示的考试</label>
+      <div class="row" style="margin-bottom:12px;">
+        <button id="selectAllBtn" class="btn-soft">全选</button>
+        <button id="selectNoneBtn" class="btn-soft">全不选</button>
+      </div>
+      <div id="trendTOCList"></div>
+    </div>
+
+    <div class="panel" id="progressPanel" hidden>
+      <label>正在计算</label>
+      <div class="progress-bar"><div class="progress-inner" id="progressInner"></div></div>
+      <div class="progress-label">
+        <span id="progressText">准备中…</span>
+        <span><b id="progressPct">0%</b></span>
+      </div>
+    </div>
+
+    <div class="panel" id="trendResultPanel" hidden>
+      <label>成绩折线图</label>
+      <div class="chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div id="trendStats" class="stats"></div>
+      <div id="trendSummary" class="trend-summary"></div>
+    </div>
+  </div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  var state = { sheet: null, label: '' };
+  var state = { sheet: null, label: '', tocEntries: [], trendPoints: [] };
 
   var $ = function (id) { return document.getElementById(id); };
   var dateInput      = $('dateInput'),
@@ -225,26 +313,34 @@
       rawTableWrap   = $('rawTableWrap'),
       tocPanel       = $('tocPanel'),
       tocList        = $('tocList'),
-      tocMsg         = $('tocMsg');
+      tocMsg         = $('tocMsg'),
+      mainView       = $('mainView'),
+      trendView      = $('trendView'),
+      trendBtn       = $('trendBtn'),
+      backBtn        = $('backBtn'),
+      trendName      = $('trendName'),
+      trendStartBtn  = $('trendStartBtn'),
+      trendMsg       = $('trendMsg'),
+      trendTOCList   = $('trendTOCList'),
+      selectAllBtn   = $('selectAllBtn'),
+      selectNoneBtn  = $('selectNoneBtn'),
+      progressPanel  = $('progressPanel'),
+      progressInner  = $('progressInner'),
+      progressText   = $('progressText'),
+      progressPct    = $('progressPct'),
+      trendResultPanel = $('trendResultPanel'),
+      trendChart     = $('trendChart'),
+      trendStats     = $('trendStats'),
+      trendSummary   = $('trendSummary');
 
   /* ---------------- 学科映射 ---------------- */
 
   var SUBJECT_MAP = {
-    yw: '语文',
-    sx: '数学',
-    yy: '英语',
-    wl: '物理',
-    hx: '化学',
-    sw: '生物',
-    zz: '政治',
-    ls: '历史',
-    dl: '地理',
-    xx: '信息技术',
-    tj: '通用技术',
-    ty: '体育',
-    yj: '音乐',
-    ms: '美术',
-    js: '计算机'
+    yw: '语文', sx: '数学', yy: '英语',
+    wl: '物理', hx: '化学', sw: '生物',
+    zz: '政治', ls: '历史', dl: '地理',
+    xx: '信息技术', tj: '通用技术',
+    ty: '体育', yj: '音乐', ms: '美术', js: '计算机'
   };
 
   var SUBJECT_ORDER = [
@@ -255,27 +351,25 @@
     '体育', '音乐', '美术', '计算机'
   ];
 
-  /* 解析成绩单 ID：全数字=数学；字母前缀=对应学科 */
   function parseSheetId(id) {
     var raw = String(id).trim().replace(/\.[A-Za-z0-9]{1,6}$/, '');
     var m = raw.match(/^([A-Za-z]*)(\d+)$/);
-    if (!m) {
-      return { id: raw, prefix: '', date: raw, subject: '其他' };
-    }
+    if (!m) return { id: raw, prefix: '', date: raw, subject: '其他' };
     var prefix = (m[1] || '').toLowerCase();
     var date = m[2];
-    var subject;
-    if (!prefix) {
-      subject = '数学';
-    } else {
-      subject = SUBJECT_MAP[prefix] || ('其他(' + prefix.toUpperCase() + ')');
-    }
+    var subject = !prefix ? '数学' : (SUBJECT_MAP[prefix] || ('其他(' + prefix.toUpperCase() + ')'));
     return { id: raw, prefix: prefix, date: date, subject: subject };
   }
 
   function formatDate(d) {
     if (d && d.length === 8 && /^\d+$/.test(d)) {
       return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+    }
+    return d;
+  }
+  function formatDateShort(d) {
+    if (d && d.length === 8 && /^\d+$/.test(d)) {
+      return d.slice(4, 6) + '-' + d.slice(6, 8);
     }
     return d;
   }
@@ -299,10 +393,13 @@
     if (!isFinite(n)) return '0';
     return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
   }
-
   function fmt1(n) {
     if (!isFinite(n)) return '0';
     return (Math.round(n * 10) / 10).toFixed(1);
+  }
+  function fmt2(n) {
+    if (!isFinite(n)) return '0';
+    return (Math.round(n * 100) / 100).toFixed(2);
   }
 
   function esc(s) {
@@ -359,12 +456,12 @@
       try {
         var alt = new TextDecoder('gbk', { fatal: false }).decode(bytes.subarray(offset));
         if ((alt.match(/\uFFFD/g) || []).length < bad) return alt;
-      } catch (e2) { /* 忽略 */ }
+      } catch (e2) {}
     }
     return text;
   }
 
-  /* ---------------- 请求文本文件 ---------------- */
+  /* ---------------- 请求文本 ---------------- */
 
   function fetchText(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
@@ -390,7 +487,6 @@
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
     var candidates = hasExt ? [base] : [base + '.txt', base + '.csv'];
-
     var last = null;
 
     function tryNext(i) {
@@ -419,11 +515,7 @@
     fetchText(sheetURL('gg.txt')).then(function (text) {
       var t = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/[ \t]+$/gm, '').trim();
       noticeBody.classList.remove('loading');
-      if (!t) {
-        noticeBody.classList.add('fail');
-        noticeBody.textContent = '公告获取失败';
-        return;
-      }
+      if (!t) { noticeBody.classList.add('fail'); noticeBody.textContent = '公告获取失败'; return; }
       noticeBody.textContent = t;
     }).catch(function () {
       noticeBody.classList.remove('loading');
@@ -443,24 +535,17 @@
         if (!line || line.charAt(0) === '#') continue;
         entries.push(parseSheetId(line));
       }
+      state.tocEntries = entries;
       if (!entries.length) { tocPanel.hidden = true; return; }
       renderTOC(entries);
       tocPanel.hidden = false;
     }).catch(function () {
+      state.tocEntries = [];
       tocPanel.hidden = true;
     });
   }
 
-  function renderTOC(entries) {
-    // 按学科分组
-    var groups = {};
-    entries.forEach(function (e) {
-      if (!groups[e.subject]) groups[e.subject] = [];
-      groups[e.subject].push(e);
-    });
-
-    // 学科排序：预定义顺序优先，未知学科放末尾并按名称排
-    var subjects = Object.keys(groups);
+  function sortSubjects(subjects) {
     subjects.sort(function (a, b) {
       var ia = SUBJECT_ORDER.indexOf(a);
       var ib = SUBJECT_ORDER.indexOf(b);
@@ -469,17 +554,21 @@
       if (ia !== ib) return ia - ib;
       return a.localeCompare(b, 'zh');
     });
+    return subjects;
+  }
+
+  function renderTOC(entries) {
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+    var subjects = sortSubjects(Object.keys(groups));
 
     tocList.innerHTML = '';
-
     subjects.forEach(function (subj) {
-      var list = groups[subj];
-
-      // 同一学科内按日期降序（新的在前）
-      list.sort(function (a, b) {
-        if (a.date > b.date) return -1;
-        if (a.date < b.date) return 1;
-        return a.id.localeCompare(b.id);
+      var list = groups[subj].slice().sort(function (a, b) {
+        return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
       });
 
       var g = document.createElement('div');
@@ -499,19 +588,15 @@
         btn.className = 'toc-item';
         btn.textContent = formatDate(e.date);
         btn.title = e.id;
-
         btn.addEventListener('click', function () {
           var prev = tocList.querySelector('.toc-item.active');
           if (prev) prev.classList.remove('active');
           btn.classList.add('active');
-
           dateInput.value = e.id;
           handleLoad();
         });
-
         items.appendChild(btn);
       });
-
       g.appendChild(items);
       tocList.appendChild(g);
     });
@@ -519,7 +604,7 @@
     setMsg(tocMsg, '', '');
   }
 
-  /* ---------------- CSV / 表格 解析 ---------------- */
+  /* ---------------- CSV 解析 ---------------- */
 
   function splitLine(line) {
     var out = [], cur = '', inQ = false, i, c;
@@ -550,33 +635,36 @@
     return rows;
   }
 
+  function findCol(header, keyword) {
+    for (var i = 0; i < header.length; i++) {
+      if (header[i].indexOf(keyword) > -1) return i;
+    }
+    return -1;
+  }
+
   function buildSheet(rows) {
     if (!rows.length) throw new Error('文件内容为空。');
 
     var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
-    var col = {};
+    var col = {
+      rank:   findCol(header, '排名'),
+      cls:    findCol(header, '班级'),
+      name:   header.indexOf('姓名'),
+      absent: findCol(header, '缺考'),
+      total:  findCol(header, '科目总分'),
+      obj:    findCol(header, '客观分'),
+      sub:    findCol(header, '主观分')
+    };
 
-    header.forEach(function (h, i) {
-      if (col.rank   === undefined && h.indexOf('排名')     > -1) col.rank = i;
-      if (col.cls    === undefined && h.indexOf('班级')     > -1) col.cls = i;
-      if (col.name   === undefined && h === '姓名')               col.name = i;
-      if (col.absent === undefined && h.indexOf('缺考')     > -1) col.absent = i;
-      if (col.total  === undefined && h.indexOf('科目总分') > -1) col.total = i;
-      if (col.obj    === undefined && h.indexOf('客观分')   > -1) col.obj = i;
-      if (col.sub    === undefined && h.indexOf('主观分')   > -1) col.sub = i;
-    });
-
-    if (col.name === undefined) throw new Error('文件中没有找到“姓名”列。');
+    if (col.name === -1) throw new Error('文件中没有找到“姓名”列。');
 
     var questions = [];
     header.forEach(function (h, i) {
       var m = h.match(/^(.+?)\s*\(\s*([\d.]+)[^)]*分\s*\)$/);
       if (!m) return;
-      var qName = m[1].trim();
       var qFull = parseFloat(m[2]);
       if (!isFinite(qFull)) return;
-
-      var q = { name: qName, full: qFull, scoreIdx: i, ansIdx: null };
+      var q = { name: m[1].trim(), full: qFull, scoreIdx: i, ansIdx: null };
       if (header[i + 1] === '作答选项') q.ansIdx = i + 1;
       questions.push(q);
     });
@@ -590,11 +678,11 @@
       if (!name) continue;
 
       records.push({
-        rank:   (r[col.rank] || '').trim(),
-        cls:    (r[col.cls] || '').trim(),
-        clsKey: normalizeClass(r[col.cls]),
+        rank:   col.rank !== -1 ? (r[col.rank] || '').trim() : '',
+        cls:    col.cls !== -1 ? (r[col.cls] || '').trim() : '',
+        clsKey: normalizeClass(col.cls !== -1 ? r[col.cls] : ''),
         name:   name,
-        absent: col.absent !== undefined ? (r[col.absent] || '').trim() : '',
+        absent: col.absent !== -1 ? (r[col.absent] || '').trim() : '',
         total:  toNum(r[col.total]),
         obj:    toNum(r[col.obj]),
         sub:    toNum(r[col.sub]),
@@ -614,16 +702,12 @@
     return { records: records, questions: questions };
   }
 
-  /* ---------------- 应用成绩单数据 ---------------- */
+  /* ---------------- 应用成绩单 ---------------- */
 
   function applySheet(text, label) {
     var sheet;
-    try {
-      sheet = buildSheet(parseCSV(text));
-    } catch (err) {
-      setMsg(loadMsg, '读取失败：' + err.message, 'error');
-      return false;
-    }
+    try { sheet = buildSheet(parseCSV(text)); }
+    catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return false; }
     activateSheet(sheet, label);
     return true;
   }
@@ -649,11 +733,7 @@
 
   function handleLoad() {
     var fileName = sanitizeFileName(dateInput.value);
-
-    if (!fileName) {
-      setMsg(loadMsg, '请输入考试日期或文件名。', 'error');
-      return;
-    }
+    if (!fileName) { setMsg(loadMsg, '请输入考试日期或文件名。', 'error'); return; }
     dateInput.value = fileName;
 
     loadBtn.disabled = true;
@@ -699,20 +779,18 @@
     s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
     s.onload = function () {
       xlsxStatus = 'ready';
-      var cbs = xlsxCallbacks.slice();
-      xlsxCallbacks.length = 0;
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
       cbs.forEach(function (f) { f(true); });
     };
     s.onerror = function () {
       xlsxStatus = 'failed';
-      var cbs = xlsxCallbacks.slice();
-      xlsxCallbacks.length = 0;
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
       cbs.forEach(function (f) { f(false); });
     };
     document.head.appendChild(s);
   }
 
-  /* ---------------- 原始表格展示 ---------------- */
+  /* ---------------- 原始表格 ---------------- */
 
   var MAX_RAW_ROWS = 3000;
 
@@ -764,23 +842,18 @@
     }
   }
 
-  /* ---------------- 导入结果处理 ---------------- */
+  /* ---------------- 本地文件导入 ---------------- */
 
   function onImported(rows, fileName) {
-    if (!rows || !rows.length) {
-      setMsg(loadMsg, '文件内容为空。', 'error');
-      return;
-    }
-
+    if (!rows || !rows.length) { setMsg(loadMsg, '文件内容为空。', 'error'); return; }
     showRawTable(rows);
     dateInput.value = String(fileName).replace(/\.[^.]+$/, '');
 
     var sheet = null;
     try { sheet = buildSheet(rows); } catch (e) { sheet = null; }
 
-    if (sheet) {
-      activateSheet(sheet, fileName);
-    } else {
+    if (sheet) activateSheet(sheet, fileName);
+    else {
       state.sheet = null;
       classPanel.hidden = true;
       searchPanel.hidden = true;
@@ -792,10 +865,7 @@
   function processBuffer(buffer, name, ext, mt) {
     if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
       ensureXLSX(function (ok) {
-        if (!ok) {
-          setMsg(loadMsg, '无法加载 Excel 解析库（需联网），请改用 .csv / .txt 文件。', 'error');
-          return;
-        }
+        if (!ok) { setMsg(loadMsg, '无法加载 Excel 解析库（需联网），请改用 .csv / .txt 文件。', 'error'); return; }
         try {
           var bytes = new Uint8Array(buffer);
           var wb = XLSX.read(bytes, { type: 'array' });
@@ -803,12 +873,8 @@
           var ws = wb.Sheets[wb.SheetNames[0]];
           var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
           var rows = raw.map(function (row) {
-            return row.map(function (cell) {
-              return cell == null ? '' : String(cell).trim();
-            });
-          }).filter(function (row) {
-            return row.some(function (c) { return c !== ''; });
-          });
+            return row.map(function (cell) { return cell == null ? '' : String(cell).trim(); });
+          }).filter(function (row) { return row.some(function (c) { return c !== ''; }); });
           onImported(rows, name);
         } catch (e) {
           setMsg(loadMsg, '解析 Excel 失败：' + (e && e.message ? e.message : String(e)), 'error');
@@ -816,12 +882,10 @@
       });
       return;
     }
-
     if (/^(image|video|audio)\//.test(mt) || mt === 'application/pdf') {
       setMsg(loadMsg, '已选择 ' + name + '（' + (mt || '二进制文件') + '），无法作为表格显示。', 'error');
       return;
     }
-
     try {
       var text = decodeBuffer(buffer);
       var rows = parseCSV(text);
@@ -831,75 +895,13 @@
     }
   }
 
-  /* ---------------- 事件绑定 ---------------- */
-
-  loadBtn.addEventListener('click', handleLoad);
-  classBtn.addEventListener('click', doClassQuery);
-  searchBtn.addEventListener('click', doSearch);
-
-  dateInput.addEventListener('input', function () {
-    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
-    if (v !== dateInput.value) dateInput.value = v;
-  });
-  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
-  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
-  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
-
-  pickFile.addEventListener('click', function () {
-    fileInput.value = '';
-    fileInput.click();
-  });
-
-  fileInput.addEventListener('change', function () {
-    var f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-
-    var name = f.name || '';
-    var m = name.match(/\.([^.]+)$/);
-    var ext = m ? m[1].toLowerCase() : '';
-    var mt = (f.type || '').toLowerCase();
-
-    setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
-    rawTableWrap.innerHTML = '';
-    resultEl.innerHTML = '';
-    classPanel.hidden = true;
-    searchPanel.hidden = true;
-    state.sheet = null;
-
-    var reader = new FileReader();
-
-    reader.onload = function (ev) {
-      fileInput.value = '';
-      processBuffer(ev.target.result, name, ext, mt);
-    };
-
-    reader.onerror = function () {
-      fileInput.value = '';
-      var err = reader.error;
-      var msg = err && err.message ? err.message : '无法访问该文件';
-      if (/permission|could not be read|not be read/i.test(msg)) {
-        setMsg(loadMsg, '读取文件失败：浏览器已撤销对该文件的访问权限，请重新点击“选择本地文件”再选一次，或刷新页面后重试。', 'error');
-      } else {
-        setMsg(loadMsg, '读取文件失败：' + msg, 'error');
-      }
-    };
-
-    reader.readAsArrayBuffer(f);
-  });
-
   /* ---------------- 班级查询（仅统计） ---------------- */
 
   function doClassQuery() {
-    if (!state.sheet) {
-      setMsg(classMsg, '请先读取成绩单。', 'error');
-      return;
-    }
+    if (!state.sheet) { setMsg(classMsg, '请先读取成绩单。', 'error'); return; }
 
     var raw = classInput.value.trim();
-    if (!raw) {
-      setMsg(classMsg, '请输入班级。', 'error');
-      return;
-    }
+    if (!raw) { setMsg(classMsg, '请输入班级。', 'error'); return; }
 
     var key = normalizeClass(raw);
     var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
@@ -907,10 +909,7 @@
     classStats.innerHTML = '';
     resultEl.innerHTML = '';
 
-    if (!list.length) {
-      setMsg(classMsg, '未找到该班级。', 'error');
-      return;
-    }
+    if (!list.length) { setMsg(classMsg, '未找到该班级。', 'error'); return; }
 
     var taken = list.filter(function (r) { return r.absent === ''; });
     var absentCount = list.length - taken.length;
@@ -919,7 +918,6 @@
       if (!arr.length) return 0;
       return arr.reduce(function (a, r) { return a + r[field]; }, 0) / arr.length;
     }
-
     var avgTotal = avgOf(taken, 'total'),
         avgObj   = avgOf(taken, 'obj'),
         avgSub   = avgOf(taken, 'sub');
@@ -945,7 +943,7 @@
            '</div>';
   }
 
-  /* ---------------- 渲染结果 ---------------- */
+  /* ---------------- 个人成绩卡片 ---------------- */
 
   function buildCard(rec) {
     var card = document.createElement('div');
@@ -1006,15 +1004,12 @@
 
       var label = /^\d+$/.test(d.name) ? ('第' + d.name + '题') : d.name;
       var ansText = '';
-      if (d.hasAns) {
-        ansText = (d.ans && d.ans !== '#') ? ('选 ' + d.ans) : '未作答';
-      }
+      if (d.hasAns) ansText = (d.ans && d.ans !== '#') ? ('选 ' + d.ans) : '未作答';
 
       q.innerHTML =
         '<div class="qname">' + esc(label) + '</div>' +
         '<div class="qscore">' + esc(fmt(d.score)) + '<span>/' + esc(fmt(d.full)) + '</span></div>' +
         '<div class="qans">' + esc(ansText) + '</div>';
-
       grid.appendChild(q);
     });
 
@@ -1024,31 +1019,482 @@
     return card;
   }
 
-  /* ---------------- 姓名查询（完整精确匹配） ---------------- */
-
   function doSearch() {
-    if (!state.sheet) {
-      setMsg(searchMsg, '请先读取成绩单。', 'error');
-      return;
-    }
+    if (!state.sheet) { setMsg(searchMsg, '请先读取成绩单。', 'error'); return; }
     var key = nameInput.value.trim();
     resultEl.innerHTML = '';
 
-    if (!key) {
-      setMsg(searchMsg, '请输入完整姓名。', 'error');
-      return;
-    }
+    if (!key) { setMsg(searchMsg, '请输入完整姓名。', 'error'); return; }
 
     var list = state.sheet.records.filter(function (r) { return r.name === key; });
-
     if (!list.length) {
       setMsg(searchMsg, '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
       return;
     }
-
     setMsg(searchMsg, list.length > 1 ? ('找到 ' + list.length + ' 条记录：') : '', 'info');
     list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
   }
+
+  /* =========================================================
+     个人成绩趋势
+     ========================================================= */
+
+  /* ---- 路由 ---- */
+  function applyRoute() {
+    var isTrend = location.hash === '#trend';
+    mainView.hidden = isTrend;
+    trendView.hidden = !isTrend;
+    if (isTrend) {
+      renderTrendTOC();
+      window.scrollTo(0, 0);
+    }
+  }
+  window.addEventListener('hashchange', applyRoute);
+
+  trendBtn.addEventListener('click', function () {
+    if (!location.hash || location.hash !== '#trend') location.hash = 'trend';
+    else applyRoute();
+  });
+  backBtn.addEventListener('click', function () {
+    if (location.hash) location.hash = '';
+    else applyRoute();
+  });
+
+  /* ---- 渲染考试选择列表 ---- */
+  function renderTrendTOC() {
+    var entries = state.tocEntries || [];
+    if (!entries.length) {
+      trendTOCList.innerHTML = '<div class="msg info" style="margin-top:0;">未读取到考试目录（ml.txt）</div>';
+      return;
+    }
+
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+    var subjects = sortSubjects(Object.keys(groups));
+
+    var html = '';
+    subjects.forEach(function (subj) {
+      var list = groups[subj].slice().sort(function (a, b) {
+        return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
+      });
+      html += '<div class="toc-group">';
+      html += '<div class="toc-subject">' + esc(subj) + '（' + list.length + '）</div>';
+      html += '<div class="trend-checks">';
+      list.forEach(function (e) {
+        html += '<label class="trend-check">' +
+                  '<input type="checkbox" data-id="' + esc(e.id) + '" checked>' +
+                  '<span>' + esc(formatDate(e.date)) + '</span>' +
+                  '<span class="t-id">' + esc(e.id) + '</span>' +
+                '</label>';
+      });
+      html += '</div></div>';
+    });
+    trendTOCList.innerHTML = html;
+  }
+
+  selectAllBtn.addEventListener('click', function () {
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < cbs.length; i++) cbs[i].checked = true;
+  });
+  selectNoneBtn.addEventListener('click', function () {
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < cbs.length; i++) cbs[i].checked = false;
+  });
+
+  /* ---- 进度条 ---- */
+  function updateProgress(done, total, label) {
+    var pct = total ? Math.round(done / total * 100) : 0;
+    progressInner.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+    progressText.textContent = label || ('已完成 ' + done + ' / ' + total);
+  }
+
+  /* ---- 从单份成绩单里找学生 ---- */
+  function findStudentInRows(rows, name) {
+    if (!rows || !rows.length) return null;
+    var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
+    var iName   = header.indexOf('姓名');
+    var iTotal  = findCol(header, '科目总分');
+    var iRank   = findCol(header, '排名');
+    var iCls    = findCol(header, '班级');
+    var iAbsent = findCol(header, '缺考');
+
+    if (iName === -1) return null;
+
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (((r[iName] || '').trim()) === name) {
+        return {
+          total:  toNum(r[iTotal]),
+          rank:   iRank !== -1 ? (r[iRank] || '').trim() : '',
+          cls:    iCls !== -1 ? (r[iCls] || '').trim() : '',
+          absent: iAbsent !== -1 ? (r[iAbsent] || '').trim() : ''
+        };
+      }
+    }
+    return null;
+  }
+
+  /* ---- 开始查询 ---- */
+  function startTrendQuery() {
+    var name = trendName.value.trim();
+    if (!name) { setMsg(trendMsg, '请输入完整姓名。', 'error'); return; }
+
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    var selected = [];
+    for (var i = 0; i < cbs.length; i++) if (cbs[i].checked) selected.push(cbs[i].getAttribute('data-id'));
+
+    if (!selected.length) { setMsg(trendMsg, '请至少选择一个考试。', 'error'); return; }
+
+    setMsg(trendMsg, '', '');
+    trendResultPanel.hidden = true;
+    progressPanel.hidden = false;
+    updateProgress(0, selected.length, '准备中…');
+
+    trendStartBtn.disabled = true;
+    trendStartBtn.textContent = '查询中…';
+
+    // 按日期升序
+    var entriesMap = {};
+    (state.tocEntries || []).forEach(function (e) { entriesMap[e.id] = e; });
+
+    selected.sort(function (a, b) {
+      var ea = entriesMap[a] || parseSheetId(a);
+      var eb = entriesMap[b] || parseSheetId(b);
+      return ea.date.localeCompare(eb.date) || ea.id.localeCompare(eb.id);
+    });
+
+    var results = [];
+    var errors = [];
+    var idx = 0;
+
+    function next() {
+      if (idx >= selected.length) { finishTrendQuery(results, errors); return; }
+
+      var id = selected[idx];
+      var entry = entriesMap[id] || parseSheetId(id);
+      updateProgress(idx, selected.length, '正在读取 ' + id + '…');
+
+      fetchSheet(id).then(function (got) {
+        try {
+          var rows = parseCSV(got.text);
+          var rec = findStudentInRows(rows, name);
+          if (rec) {
+            results.push({
+              id: id,
+              date: entry.date,
+              subject: entry.subject,
+              label: formatDateShort(entry.date),
+              fullLabel: formatDate(entry.date),
+              total: rec.total,
+              rank: rec.rank,
+              cls: rec.cls,
+              absent: rec.absent
+            });
+          } else {
+            errors.push({ id: id, msg: '未找到该学生' });
+          }
+        } catch (e) {
+          errors.push({ id: id, msg: '解析失败' });
+        }
+        idx++;
+        updateProgress(idx, selected.length);
+        next();
+      }).catch(function () {
+        errors.push({ id: id, msg: '读取失败' });
+        idx++;
+        updateProgress(idx, selected.length);
+        next();
+      });
+    }
+
+    next();
+  }
+
+  function finishTrendQuery(results, errors) {
+    trendStartBtn.disabled = false;
+    trendStartBtn.textContent = '开始查询';
+
+    if (!results.length) {
+      progressPanel.hidden = true;
+      trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中没有任何记录。', 'error');
+      return;
+    }
+
+    var valid = results.filter(function (r) { return r.absent === ''; });
+
+    if (!valid.length) {
+      progressPanel.hidden = true;
+      trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中均为缺考。', 'error');
+      return;
+    }
+
+    valid.sort(function (a, b) {
+      return a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+    });
+
+    progressPanel.hidden = true;
+    trendResultPanel.hidden = false;
+
+    state.trendPoints = valid;
+
+    // 让浏览器完成布局后再绘制，保证 canvas 有实际宽度
+    requestAnimationFrame(function () {
+      drawChart(valid);
+      renderTrendStats(valid, errors);
+    });
+  }
+
+  /* ---- 折线图 ---- */
+  function drawChart(points) {
+    var canvas = trendChart;
+    var wrap = canvas.parentNode;
+    var cssW = Math.max(320, wrap.clientWidth - 8);
+    var cssH = 340;
+    var dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    var padL = 46, padR = 22, padT = 26, padB = 62;
+    var plotW = cssW - padL - padR;
+    var plotH = cssH - padT - padB;
+
+    var scores = points.map(function (p) { return p.total; });
+    var dMin = Math.min.apply(null, scores);
+    var dMax = Math.max.apply(null, scores);
+    var pad = Math.max(5, (dMax - dMin) * 0.2);
+    var yMin = Math.max(0, Math.floor(dMin - pad));
+    var yMax = Math.ceil(dMax + pad);
+    if (yMin === yMax) { yMin = Math.max(0, yMin - 5); yMax += 5; }
+
+    function xPos(i) {
+      if (points.length === 1) return padL + plotW / 2;
+      return padL + (i / (points.length - 1)) * plotW;
+    }
+    function yPos(v) {
+      return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+    }
+
+    // 网格
+    ctx.strokeStyle = '#e4e9f2';
+    ctx.lineWidth = 1;
+    var ySteps = 5;
+    for (var i = 0; i <= ySteps; i++) {
+      var v = yMin + (yMax - yMin) * i / ySteps;
+      var y = yPos(v);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#8b95a7';
+      ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(Math.round(v)), padL - 6, y);
+    }
+
+    // 折线
+    ctx.strokeStyle = '#3b6cf6';
+    ctx.lineWidth = 2.4;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach(function (p, i) {
+      var x = xPos(i), y = yPos(p.total);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 数据点 + 分数标注
+    points.forEach(function (p, i) {
+      var x = xPos(i), y = yPos(p.total);
+
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.strokeStyle = '#3b6cf6';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 11.5px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(String(Math.round(p.total)), x, y - 8);
+    });
+
+    // X 轴标签
+    var labelStep = points.length > 12 ? Math.ceil(points.length / 9) : 1;
+    points.forEach(function (p, i) {
+      if (i % labelStep !== 0 && i !== points.length - 1) return;
+      var x = xPos(i);
+      ctx.save();
+      ctx.translate(x, padT + plotH + 10);
+      ctx.rotate(-Math.PI / 5);
+      ctx.fillStyle = '#8b95a7';
+      ctx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(p.label, 0, 0);
+      ctx.restore();
+    });
+  }
+
+  /* ---- 统计与文字描述 ---- */
+  function renderTrendStats(points, errors) {
+    var n = points.length;
+    var scores = points.map(function (p) { return p.total; });
+    var sum = scores.reduce(function (a, b) { return a + b; }, 0);
+    var avg = sum / n;
+
+    var maxV = Math.max.apply(null, scores);
+    var minV = Math.min.apply(null, scores);
+    var maxIdx = scores.indexOf(maxV);
+    var minIdx = scores.indexOf(minV);
+
+    // 标准差
+    var variance = 0;
+    for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
+    variance /= n;
+    var std = Math.sqrt(variance);
+
+    // 线性回归斜率
+    var slope = 0;
+    if (n > 1) {
+      var xSum = 0, ySum = 0, xySum = 0, x2Sum = 0;
+      for (var j = 0; j < n; j++) {
+        var x = j, y = scores[j];
+        xSum += x; ySum += y;
+        xySum += x * y; x2Sum += x * x;
+      }
+      var denom = n * x2Sum - xSum * xSum;
+      if (denom !== 0) slope = (n * xySum - xSum * ySum) / denom;
+    }
+
+    // 趋势描述
+    var trendText;
+    if (n < 2) trendText = '数据点不足';
+    else if (slope > 1) trendText = '明显上升';
+    else if (slope > 0.3) trendText = '略有上升';
+    else if (slope < -1) trendText = '明显下降';
+    else if (slope < -0.3) trendText = '略有下降';
+    else trendText = '基本平稳';
+
+    // 起伏描述
+    var waveText;
+    if (n < 2) waveText = '数据点不足';
+    else if (std < 3) waveText = '非常稳定';
+    else if (std < 7) waveText = '比较稳定';
+    else if (std < 12) waveText = '波动较大';
+    else waveText = '波动很大';
+
+    // 统计卡片
+    var html = '';
+    html += statBox('有效次数', n, ' 次');
+    html += statBox('平均分', fmt1(avg), ' 分');
+    html += statBox('最高分', fmt(maxV), ' 分');
+    html += statBox('最低分', fmt(minV), ' 分');
+    html += statBox('标准差', fmt2(std), '');
+    html += statBox('波动幅度', fmt(maxV - minV), ' 分');
+    trendStats.innerHTML = html;
+
+    // 描述文字
+    var parts = [];
+    parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
+    parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
+    parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
+    parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
+
+    var text = parts.join('　·　');
+    if (errors && errors.length) {
+      text += '<br><span style="color:#8b95a7;font-size:12.5px;">另有 ' + errors.length +
+              ' 个文件未能读取或未找到该学生（' +
+              errors.map(function (e) { return e.id; }).join('、') + '）</span>';
+    }
+    trendSummary.innerHTML = text;
+  }
+
+  /* ---- 窗口大小变化时重绘 ---- */
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (!state.trendPoints || !state.trendPoints.length) return;
+    if (trendResultPanel.hidden) return;
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (state.trendPoints && state.trendPoints.length) drawChart(state.trendPoints);
+    }, 120);
+  });
+
+  /* ---------------- 事件绑定 ---------------- */
+
+  loadBtn.addEventListener('click', handleLoad);
+  classBtn.addEventListener('click', doClassQuery);
+  searchBtn.addEventListener('click', doSearch);
+  trendStartBtn.addEventListener('click', startTrendQuery);
+
+  dateInput.addEventListener('input', function () {
+    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
+    if (v !== dateInput.value) dateInput.value = v;
+  });
+  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
+  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+  trendName.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
+
+  pickFile.addEventListener('click', function () {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+
+    var name = f.name || '';
+    var m = name.match(/\.([^.]+)$/);
+    var ext = m ? m[1].toLowerCase() : '';
+    var mt = (f.type || '').toLowerCase();
+
+    setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
+    rawTableWrap.innerHTML = '';
+    resultEl.innerHTML = '';
+    classPanel.hidden = true;
+    searchPanel.hidden = true;
+    state.sheet = null;
+
+    var reader = new FileReader();
+
+    reader.onload = function (ev) {
+      fileInput.value = '';
+      processBuffer(ev.target.result, name, ext, mt);
+    };
+
+    reader.onerror = function () {
+      fileInput.value = '';
+      var err = reader.error;
+      var msg = err && err.message ? err.message : '无法访问该文件';
+      if (/permission|could not be read|not be read/i.test(msg)) {
+        setMsg(loadMsg, '读取文件失败：浏览器已撤销对该文件的访问权限，请重新点击“选择本地文件”再选一次，或刷新页面后重试。', 'error');
+      } else {
+        setMsg(loadMsg, '读取文件失败：' + msg, 'error');
+      }
+    };
+
+    reader.readAsArrayBuffer(f);
+  });
 
   /* ---------------- URL 参数直达 ---------------- */
 
@@ -1077,6 +1523,7 @@
 
   loadNotice();
   loadTOC();
+  applyRoute();
 })();
 </script>
 </body>
