@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub 文件管理</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; max-width: 860px; margin: 0 auto; padding: 1rem; background: #f6f8fa; color: #24292f; }
+  h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+  h3 { margin: 0 0 .8rem; font-size: 1rem; }
+  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+  label { display: block; font-weight: 600; margin-bottom: .3rem; font-size: .9rem; }
+  input, button { font-size: .95rem; padding: .5rem; border-radius: 6px; border: 1px solid #d0d7de; width: 100%; font-family: inherit; }
+  button { background: #1f883d; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+  button:hover { background: #1a7f37; }
+  button:disabled { background: #94d3a2; cursor: not-allowed; }
+  button.secondary { background: #0969da; }
+  button.secondary:hover { background: #0757b3; }
+  button.danger { background: #cf222e; width: auto; padding: .25rem .7rem; font-size: .8rem; }
+  button.danger:hover { background: #a40e26; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  .status { padding: .6rem .8rem; border-radius: 6px; font-size: .9rem; margin-top: .8rem; display: none; }
+  .status.ok { display: block; background: #dafbe1; color: #1a7f37; }
+  .status.err { display: block; background: #ffebe9; color: #cf222e; }
+  .status.info { display: block; background: #ddf4ff; color: #0969da; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #d0d7de; }
+  th { background: #f6f8fa; }
+  .muted { color: #57606a; font-size: .85rem; }
+  a { color: #0969da; }
+  .hint { font-size: .8rem; color: #57606a; margin-top: .3rem; }
+</style>
+</head>
+<body>
+
+<h1>📁 GitHub 文件管理</h1>
+
+<div class="card">
+  <div id="tokenStatus" class="status info" style="display:block">正在读取 github令牌.txt …</div>
+</div>
+
+<div class="card">
+  <h3>仓库设置</h3>
+  <div class="row">
+    <div>
+      <label>Owner</label>
+      <input id="owner" placeholder="你的 GitHub 用户名">
+    </div>
+    <div>
+      <label>Repo</label>
+      <input id="repo" placeholder="仓库名">
+    </div>
+    <div>
+      <label>分支</label>
+      <input id="branch" value="main">
+    </div>
+  </div>
+  <div style="margin-top:.8rem">
+    <label>路径（可留空表示根目录）</label>
+    <input id="path" placeholder="例如 docs 或 images">
+    <div class="hint">上传时会存到这个目录下，列表也会显示这个目录的内容。</div>
+  </div>
+  <div style="margin-top:.8rem">
+    <button id="loadBtn" class="secondary">读取文件列表</button>
+  </div>
+  <div id="listStatus" class="status"></div>
+</div>
+
+<div class="card">
+  <h3>文件列表</h3>
+  <div id="fileList" class="muted">尚未加载，请先点击“读取文件列表”。</div>
+</div>
+
+<div class="card">
+  <h3>上传文件</h3>
+  <input type="file" id="fileInput" multiple>
+  <div style="margin-top:.8rem">
+    <label>提交信息（可选）</label>
+    <input id="commitMsg" placeholder="Upload via web">
+  </div>
+  <div style="margin-top:.8rem">
+    <button id="uploadBtn">上传到仓库</button>
+  </div>
+  <div id="uploadStatus" class="status"></div>
+</div>
+
+<script>
+// ==================== 令牌读取 ====================
+let TOKEN = null;
+const API = 'https://api.github.com';
+
+async function loadToken() {
+  const el = document.getElementById('tokenStatus');
+  try {
+    const res = await fetch(encodeURI('./github令牌.txt'), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = (await res.text()).trim();
+    if (!text) throw new Error('文件为空');
+    TOKEN = text;
+    el.className = 'status ok';
+    el.textContent = '✅ 已读取令牌（' + text.slice(0, 12) + '…）';
+  } catch (e) {
+    el.className = 'status err';
+    el.innerHTML = '❌ 无法读取 github令牌.txt：' + e.message +
+      '<div class="hint">如果你是双击打开（file://），浏览器会禁止读取同目录文件。请用本地服务器访问；也可以在下面手动粘贴令牌。</div>' +
+      '<div style="margin-top:.6rem"><input id="manualToken" placeholder="手动粘贴 GitHub 令牌">' +
+      '<button style="width:auto;margin-top:.5rem" onclick="useManualToken()">使用</button></div>';
+  }
+}
+
+function useManualToken() {
+  const v = document.getElementById('manualToken').value.trim();
+  if (!v) return;
+  TOKEN = v;
+  const el = document.getElementById('tokenStatus');
+  el.className = 'status ok';
+  el.textContent = '✅ 已使用手动粘贴的令牌';
+}
+
+// ==================== 通用工具 ====================
+function setStatus(id, type, html) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + type;
+  el.innerHTML = html;
+}
+function hideStatus(id) { document.getElementById(id).className = 'status'; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatSize(bytes) {
+  if (bytes == null) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function getConfig() {
+  const owner = document.getElementById('owner').value.trim();
+  const repo = document.getElementById('repo').value.trim();
+  const branch = document.getElementById('branch').value.trim() || 'main';
+  const path = document.getElementById('path').value.trim().replace(/^\/+|\/+$/g, '');
+  if (!owner || !repo) throw new Error('请填写 Owner 和 Repo');
+  return { owner, repo, branch, path };
+}
+
+// ==================== GitHub API 封装 ====================
+async function gh(path, options = {}) {
+  if (!TOKEN) throw new Error('未设置令牌');
+  const res = await fetch(API + path, {
+    ...options,
+    headers: {
+      'Authorization': 'Bearer ' + TOKEN,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers || {})
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+  return data;
+}
+
+// ==================== 读取列表 ====================
+document.getElementById('loadBtn').addEventListener('click', async () => {
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
+  setStatus('listStatus', 'info', '加载中…');
+  document.getElementById('fileList').innerHTML = '<span class="muted">加载中…</span>';
+
+  try {
+    const p = cfg.path;
+    const url = p
+      ? `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(p)}?ref=${encodeURIComponent(cfg.branch)}`
+      : `/repos/${cfg.owner}/${cfg.repo}/contents?ref=${encodeURIComponent(cfg.branch)}`;
+    const data = await gh(url);
+
+    if (!Array.isArray(data)) throw new Error(data.message || '该路径不是目录');
+
+    if (data.length === 0) {
+      document.getElementById('fileList').innerHTML = '<span class="muted">目录为空</span>';
+      hideStatus('listStatus');
+      return;
+    }
+
+    let html = '<table><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>操作</th></tr></thead><tbody>';
+    for (const item of data) {
+      const isFile = item.type === 'file';
+      const size = isFile ? formatSize(item.size) : '—';
+      const delBtn = isFile
+        ? `<button class="danger" onclick="doDelete('${escapeHtml(item.path)}','${item.sha}')">删除</button>`
+        : '';
+      html += `<tr>
+        <td>${escapeHtml(item.name)}</td>
+        <td>${item.type === 'dir' ? '📁 目录' : '📄 文件'}</td>
+        <td>${size}</td>
+        <td>${delBtn}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('fileList').innerHTML = html;
+    hideStatus('listStatus');
+  } catch (e) {
+    setStatus('listStatus', 'err', '❌ ' + e.message);
+    document.getElementById('fileList').innerHTML = '<span class="muted">加载失败</span>';
+  }
+});
+
+// ==================== 上传 ====================
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('uploadStatus', 'err', e.message); return; }
+
+  const input = document.getElementById('fileInput');
+  if (!input.files.length) { setStatus('uploadStatus', 'err', '请先选择文件'); return; }
+
+  const msg = document.getElementById('commitMsg').value.trim() || 'Upload via web';
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  setStatus('uploadStatus', 'info', '上传中…');
+
+  const results = [];
+  try {
+    for (const file of input.files) {
+      const base64 = await readAsBase64(file);
+      const filePath = cfg.path ? `${cfg.path}/${file.name}` : file.name;
+      const url = `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(filePath)}`;
+
+      // 检查文件是否已存在，存在则需要 sha
+      let sha = null;
+      try {
+        const existing = await gh(`${url}?ref=${encodeURIComponent(cfg.branch)}`);
+        if (existing && existing.sha) sha = existing.sha;
+      } catch (e) { /* 文件不存在，忽略 */ }
+
+      const body = {
+        message: `${msg}: ${file.name}`,
+        content: base64,
+        branch: cfg.branch
+      };
+      if (sha) body.sha = sha;
+
+      const res = await gh(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      results.push({ name: file.name, url: res.commit && res.commit.html_url });
+    }
+
+    setStatus('uploadStatus', 'ok',
+      '✅ 上传完成：<br>' + results.map(r =>
+        `• ${escapeHtml(r.name)}${r.url ? ` <a href="${r.url}" target="_blank">查看提交</a>` : ''}`
+      ).join('<br>')
+    );
+    input.value = '';
+    document.getElementById('loadBtn').click();
+  } catch (e) {
+    setStatus('uploadStatus', 'err', '❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ==================== 删除 ====================
+async function doDelete(filePath, sha) {
+  if (!confirm('确定删除 ' + filePath + ' ？此操作会创建一个删除提交。')) return;
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
+
+  setStatus('listStatus', 'info', '删除中…');
+  try {
+    await gh(`/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(filePath)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Delete ${filePath} via web`,
+        sha,
+        branch: cfg.branch
+      })
+    });
+    setStatus('listStatus', 'ok', '✅ 已删除');
+    document.getElementById('loadBtn').click();
+  } catch (e) {
+    setStatus('listStatus', 'err', '❌ ' + e.message);
+  }
+}
+
+// ==================== 启动 ====================
+loadToken();
+</script>
+</body>
+</html>
