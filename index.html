@@ -18,7 +18,7 @@
   .wrap{max-width:880px;margin:0 auto;}
   h1{
     font-size:22px;margin:0 0 20px;text-align:center;letter-spacing:1px;
-    line-height:1.5;font-weight:700;
+    line-height:1.5;font-weight:700;user-select:none;
   }
   @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;} }
 
@@ -128,7 +128,6 @@
   .stat .stat-v small{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
   .stat.warn .stat-v{color:var(--warn);}
 
-  /* 管理员模式：班级学生名单 */
   .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
   .stu{
     display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
@@ -210,7 +209,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>广州开元学校高一学生成绩查询<span id="adminBadge" class="admin-badge" style="display:none;">管理员</span></h1>
+  <h1 id="pageTitle">广州开元学校高一学生成绩查询<span id="adminBadge" class="admin-badge" style="display:none;">管理员</span></h1>
 
   <!-- ============ 主视图 ============ -->
   <div id="mainView">
@@ -324,11 +323,12 @@
     sheet: null, label: '',
     tocEntries: [], trendPoints: [],
     idNameMap: null,
-    adminMode: false      // 每次加载重置为 false，不再从 sessionStorage 恢复
+    adminMode: false
   };
 
   var $ = function (id) { return document.getElementById(id); };
-  var dateInput      = $('dateInput'),
+  var pageTitle      = $('pageTitle'),
+      dateInput      = $('dateInput'),
       loadBtn        = $('loadBtn'),
       loadMsg        = $('loadMsg'),
       classPanel     = $('classPanel'),
@@ -525,18 +525,110 @@
     });
   }
 
-  function fetchSheet(inputName) {
+  /* 拿原始 buffer，不做文本解析 */
+  function fetchBuffer(url) {
+    return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
+      if (!res.ok) {
+        var e = new Error('HTTP ' + res.status);
+        e.status = res.status;
+        throw e;
+      }
+      return res.arrayBuffer();
+    });
+  }
+
+  /* ---------------- SheetJS 按需加载 ---------------- */
+
+  var xlsxStatus = 'none';
+  var xlsxCallbacks = [];
+
+  function ensureXLSX(cb) {
+    if (typeof XLSX !== 'undefined') { cb(true); return; }
+    if (xlsxStatus === 'ready') { cb(true); return; }
+    if (xlsxStatus === 'failed') { cb(false); return; }
+
+    xlsxCallbacks.push(cb);
+    if (xlsxStatus === 'loading') return;
+    xlsxStatus = 'loading';
+
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = function () {
+      xlsxStatus = 'ready';
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
+      cbs.forEach(function (f) { f(true); });
+    };
+    s.onerror = function () {
+      xlsxStatus = 'failed';
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
+      cbs.forEach(function (f) { f(false); });
+    };
+    document.head.appendChild(s);
+  }
+
+  /* ---------------- 根据扩展名把 buffer 解析成 rows ---------------- */
+
+  function parseBufferToRows(buf, fileName) {
+    var extMatch = fileName.match(/\.([^.]+)$/);
+    var ext = extMatch ? extMatch[1].toLowerCase() : '';
+
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
+      return new Promise(function (resolve, reject) {
+        ensureXLSX(function (ok) {
+          if (!ok) { reject(new Error('无法加载 Excel 解析库（需联网）')); return; }
+          try {
+            var bytes = new Uint8Array(buf);
+            var wb = XLSX.read(bytes, { type: 'array' });
+            if (!wb.SheetNames.length) { reject(new Error('工作簿中没有工作表。')); return; }
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+            var rows = raw.map(function (row) {
+              return row.map(function (cell) { return cell == null ? '' : String(cell).trim(); });
+            }).filter(function (row) {
+              return row.some(function (c) { return c !== ''; });
+            });
+            resolve(rows);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    }
+
+    // 文本类文件
+    var text = decodeBuffer(buf);
+    if (/^\s*<(!doctype|html)/i.test(text)) {
+      var e = new Error('NOT_FOUND_AS_HTML');
+      e.code = 'HTML_FALLBACK';
+      return Promise.reject(e);
+    }
+    return Promise.resolve(parseCSV(text));
+  }
+
+  /* ---------------- 读取成绩单：多后缀尝试 ---------------- */
+
+  function fetchSheetRows(inputName) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
-    var candidates = hasExt ? [base] : [base + '.txt', base + '.csv'];
+    var candidates = hasExt ? [base] : [
+      base + '.txt',
+      base + '.csv',
+      base + '.xlsx',
+      base + '.xls',
+      base + '.xlsm',
+      base + '.xlsb'
+    ];
+
     var last = null;
 
     function tryNext(i) {
       if (i >= candidates.length) return Promise.reject(last);
       var fileName = candidates[i];
       var url = sheetURL(fileName);
-      return fetchText(url).then(function (text) {
-        return { text: text, fileName: fileName, url: url };
+      return fetchBuffer(url).then(function (buf) {
+        return parseBufferToRows(buf, fileName).then(function (rows) {
+          return { rows: rows, fileName: fileName, url: url };
+        });
       }).catch(function (err) {
         err.url = url;
         err.fileName = fileName;
@@ -624,8 +716,8 @@
   }
 
   function validateIdName(id, name) {
-    if (state.adminMode) return null;      // 管理员免校验
-    if (!state.idNameMap) return null;     // 未加载考号库，跳过校验
+    if (state.adminMode) return null;
+    if (!state.idNameMap) return null;
     if (!id) return '请输入考号。';
     var expected = state.idNameMap[id];
     if (!expected) return '未找到考号“' + id + '”，请检查后重试。';
@@ -638,7 +730,7 @@
   function tryAdminLogin(pwd) {
     return fetchText(sheetURL('mm.txt')).then(function (text) {
       if (pwd === String(text).trim()) {
-        state.adminMode = true;    // 仅存内存，不持久化；刷新即重置
+        state.adminMode = true;
         applyIdNameState();
         dateInput.value = '';
         setMsg(loadMsg, '管理员模式已启用。', 'ok');
@@ -649,6 +741,26 @@
       return false;
     });
   }
+
+  /* ---------------- 标题三连击跳转 ---------------- */
+
+  var titleClickCount = 0;
+  var titleClickTimer = null;
+
+  pageTitle.addEventListener('click', function () {
+    if (!state.adminMode) return;
+    titleClickCount++;
+    if (titleClickTimer) clearTimeout(titleClickTimer);
+    titleClickTimer = setTimeout(function () {
+      titleClickCount = 0;
+      titleClickTimer = null;
+    }, 800);
+    if (titleClickCount >= 3) {
+      titleClickCount = 0;
+      if (titleClickTimer) { clearTimeout(titleClickTimer); titleClickTimer = null; }
+      location.href = 'file.html';
+    }
+  });
 
   /* ---------------- CSV 解析 ---------------- */
 
@@ -750,14 +862,6 @@
 
   /* ---------------- 应用成绩单 ---------------- */
 
-  function applySheet(text, label) {
-    var sheet;
-    try { sheet = buildSheet(parseCSV(text)); }
-    catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return false; }
-    activateSheet(sheet, label);
-    return true;
-  }
-
   function activateSheet(sheet, label) {
     state.sheet = sheet;
     state.label = label;
@@ -792,16 +896,18 @@
     searchPanel.hidden = true;
     state.sheet = null;
 
-    fetchSheet(fileName).then(function (got) {
-      applySheet(got.text, got.fileName);
+    fetchSheetRows(fileName).then(function (got) {
+      var sheet;
+      try { sheet = buildSheet(got.rows); }
+      catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return; }
+      activateSheet(sheet, got.fileName);
     }).catch(function (err) {
-      var tried = err && err.fileName ? err.fileName : (fileName + '.txt');
       if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
-        setMsg(loadMsg, '未找到成绩单 ' + tried + '，请检查文件名是否正确。', 'error');
+        setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
       } else if (err && err.status) {
         setMsg(loadMsg, '读取失败：服务器返回 ' + err.status + '。', 'error');
       } else {
-        setMsg(loadMsg, '读取失败：无法访问成绩单文件。', 'error');
+        setMsg(loadMsg, '读取失败：' + (err && err.message ? err.message : '无法访问成绩单文件。'), 'error');
       }
     }).then(function () {
       loadBtn.disabled = false;
@@ -826,35 +932,6 @@
     }
 
     doLoadSheet(raw);
-  }
-
-  /* ---------------- SheetJS 按需加载 ---------------- */
-
-  var xlsxStatus = 'none';
-  var xlsxCallbacks = [];
-
-  function ensureXLSX(cb) {
-    if (typeof XLSX !== 'undefined') { cb(true); return; }
-    if (xlsxStatus === 'ready') { cb(true); return; }
-    if (xlsxStatus === 'failed') { cb(false); return; }
-
-    xlsxCallbacks.push(cb);
-    if (xlsxStatus === 'loading') return;
-    xlsxStatus = 'loading';
-
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-    s.onload = function () {
-      xlsxStatus = 'ready';
-      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
-      cbs.forEach(function (f) { f(true); });
-    };
-    s.onerror = function () {
-      xlsxStatus = 'failed';
-      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
-      cbs.forEach(function (f) { f(false); });
-    };
-    document.head.appendChild(s);
   }
 
   /* ---------------- 原始表格 ---------------- */
@@ -929,37 +1006,12 @@
     }
   }
 
-  function processBuffer(buffer, name, ext, mt) {
-    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
-      ensureXLSX(function (ok) {
-        if (!ok) { setMsg(loadMsg, '无法加载 Excel 解析库（需联网），请改用 .csv / .txt 文件。', 'error'); return; }
-        try {
-          var bytes = new Uint8Array(buffer);
-          var wb = XLSX.read(bytes, { type: 'array' });
-          if (!wb.SheetNames.length) throw new Error('工作簿中没有工作表。');
-          var ws = wb.Sheets[wb.SheetNames[0]];
-          var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
-          var rows = raw.map(function (row) {
-            return row.map(function (cell) { return cell == null ? '' : String(cell).trim(); });
-          }).filter(function (row) { return row.some(function (c) { return c !== ''; }); });
-          onImported(rows, name);
-        } catch (e) {
-          setMsg(loadMsg, '解析 Excel 失败：' + (e && e.message ? e.message : String(e)), 'error');
-        }
-      });
-      return;
-    }
-    if (/^(image|video|audio)\//.test(mt) || mt === 'application/pdf') {
-      setMsg(loadMsg, '已选择 ' + name + '（' + (mt || '二进制文件') + '），无法作为表格显示。', 'error');
-      return;
-    }
-    try {
-      var text = decodeBuffer(buffer);
-      var rows = parseCSV(text);
+  function processBuffer(buffer, name) {
+    parseBufferToRows(buffer, name).then(function (rows) {
       onImported(rows, name);
-    } catch (e) {
+    }).catch(function (e) {
       setMsg(loadMsg, '读取文件失败：' + (e && e.message ? e.message : String(e)), 'error');
-    }
+    });
   }
 
   /* ---------------- 考试目录 ---------------- */
@@ -1086,7 +1138,6 @@
     }
     setMsg(classMsg, info, 'info');
 
-    // 仅管理员模式显示学生名单
     if (state.adminMode) {
       var head = document.createElement('div');
       head.className = 'list-head';
@@ -1225,10 +1276,8 @@
 
     var list;
     if (state.adminMode) {
-      // 管理员：模糊搜索
       list = state.sheet.records.filter(function (r) { return r.name.indexOf(key) > -1; });
     } else {
-      // 普通：精确匹配
       list = state.sheet.records.filter(function (r) { return r.name === key; });
     }
 
@@ -1390,10 +1439,9 @@
       var entry = entriesMap[sid] || parseSheetId(sid);
       updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
 
-      fetchSheet(sid).then(function (got) {
+      fetchSheetRows(sid).then(function (got) {
         try {
-          var rows = parseCSV(got.text);
-          var rec = findStudentInRows(rows, name, fuzzy);
+          var rec = findStudentInRows(got.rows, name, fuzzy);
           if (rec) {
             results.push({
               id: sid,
@@ -1664,9 +1712,6 @@
     if (!f) return;
 
     var name = f.name || '';
-    var m = name.match(/\.([^.]+)$/);
-    var ext = m ? m[1].toLowerCase() : '';
-    var mt = (f.type || '').toLowerCase();
 
     setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
     rawTableWrap.innerHTML = '';
@@ -1679,7 +1724,7 @@
 
     reader.onload = function (ev) {
       fileInput.value = '';
-      processBuffer(ev.target.result, name, ext, mt);
+      processBuffer(ev.target.result, name);
     };
 
     reader.onerror = function () {
