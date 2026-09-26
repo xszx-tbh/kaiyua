@@ -400,6 +400,66 @@
       logsContent    = $('logsContent');
 
   /* =========================================================
+     错误信息翻译（把浏览器抛出的英文错误转成中文）
+     ========================================================= */
+
+  function translateError(err) {
+    if (!err) return '未知错误';
+    var msg = (err && err.message) ? String(err.message) : String(err);
+    if (!msg) return '未知错误';
+
+    // 已经含中文，直接返回
+    if (/[\u4e00-\u9fa5]/.test(msg)) return msg;
+
+    if (/Failed to fetch|Load failed|Failed to load/i.test(msg)) {
+      return '网络请求失败（可能是网络问题、跨域限制或文件不存在）';
+    }
+    if (/NetworkError|Network error|network request failed/i.test(msg)) {
+      return '网络连接错误';
+    }
+    if (/TypeError/i.test(msg)) {
+      return '请求失败（可能是网络或跨域问题）';
+    }
+    if (/AbortError/i.test(msg)) {
+      return '请求被中断';
+    }
+    if (/CORS|cross-origin/i.test(msg)) {
+      return '跨域请求被拒绝（服务器未允许本站访问）';
+    }
+    if (/timeout/i.test(msg)) {
+      return '请求超时';
+    }
+    if (/Not allowed to load local resource/i.test(msg)) {
+      return '浏览器禁止直接读取本地文件';
+    }
+    if (/permission|could not be read|not be read/i.test(msg)) {
+      return '浏览器已撤销对该文件的访问权限';
+    }
+
+    // HTTP 状态码
+    var m = msg.match(/HTTP\s+(\d+)/i);
+    if (m) {
+      var code = m[1];
+      var map = {
+        '400': '请求参数错误',
+        '401': '身份验证失败',
+        '403': '访问被拒绝（可能是跨域或权限问题）',
+        '404': '未找到资源',
+        '405': '请求方法不被允许',
+        '408': '请求超时',
+        '429': '请求过于频繁',
+        '500': '服务器内部错误',
+        '502': '网关错误',
+        '503': '服务暂不可用',
+        '504': '网关超时'
+      };
+      return map[code] || ('服务器返回错误 ' + code);
+    }
+
+    return msg;
+  }
+
+  /* =========================================================
      学科映射
      ========================================================= */
 
@@ -699,10 +759,7 @@
   }
 
   /* =========================================================
-     令牌.txt — 读取 Firebase 配置
-     第一行：令牌（用于校验）
-     第二行：密钥（Firebase API Key）
-     第三行：API 端点（Firebase Storage Bucket 的 upload URL）
+     令牌.txt
      ========================================================= */
 
   function loadTokenConfig() {
@@ -761,82 +818,85 @@
   }
 
   /* =========================================================
-     Firebase Storage REST API — 上传 / 列出
-     =========================================================
-     
-     令牌.txt 前三行：
-       第1行：校验令牌（自定义，仅用于本地校验）
-       第2行：Firebase API Key（用于身份验证）
-       第3行：Firebase Storage Bucket 名称（如 my-project.appspot.com）
-
-     说明：
-       - 上传：POST https://firebasestorage.googleapis.com/v0/b/{bucket}/o?name={path}
-       - 列出：GET  https://firebasestorage.googleapis.com/v0/b/{bucket}/o?prefix={prefix}
-       - 认证：在 URL 中附加 ?key={apiKey}，或使用 Authorization: Bearer
-       - 如果 Firebase 安全规则允许公开写入，则无需令牌即可上传
-       - 建议在 Firebase 控制台设置 Storage 规则为：
-           allow read, write: if true;  （仅用于测试）
-         生产环境请使用 Firebase Auth 并设置更严格的规则
-
-     如果端点不是 Firebase Storage 而是自定义 API，代码会自动回退到
-     原来的 POST / GET 方式，保持兼容。
+     Firebase Storage — bucket 名提取
      ========================================================= */
 
-  function isFirebaseEndpoint(endpoint) {
-    return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/.test(endpoint);
+  function extractBucket(endpoint) {
+    if (!endpoint) return '';
+    var m = endpoint.match(/\/b\/([^\/\?#]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    // 用户可能直接填了 bucket 名称
+    if (!/^https?:\/\//i.test(endpoint)) return endpoint.replace(/\/.*$/, '').trim();
+    return '';
   }
 
-  /* ---------- 上传访问记录到 Firebase Storage ---------- */
+  function isFirebaseEndpoint(endpoint) {
+    return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(endpoint || '');
+  }
+
+  /* =========================================================
+     CORS 代理兜底工具
+     ========================================================= */
+
+  var CORS_PROXIES = [
+    function (url) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url); },
+    function (url) { return 'https://corsproxy.io/?' + encodeURIComponent(url); }
+  ];
+
+  function fetchViaProxy(url) {
+    var i = 0;
+    function tryNext() {
+      if (i >= CORS_PROXIES.length) {
+        return Promise.reject(new Error('跨域请求被拒绝（服务器未允许本站访问）'));
+      }
+      var proxied = CORS_PROXIES[i](url);
+      i++;
+      return fetch(proxied, { cache: 'no-store' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res;
+        })
+        .catch(tryNext);
+    }
+    return tryNext();
+  }
+
+  /* GET：先直连，失败用代理 */
+  function corsGetJSON(url) {
+    return fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .catch(function () {
+        return fetchViaProxy(url).then(function (res) { return res.json(); });
+      });
+  }
+
+  /* POST：使用 text/plain 避免触发预检，让 Firebase 直接接收 */
+  function corsPostJSON(url, data) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify(data)
+    }).then(function (res) {
+      // Firebase 成功时返回 200/201
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res;
+    });
+  }
+
+  /* =========================================================
+     上传访问记录
+     ========================================================= */
 
   function uploadVisitToFirebase(info, bucket) {
     var fileName = 'visits/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.json';
     var url = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
               '/o?name=' + encodeURIComponent(fileName);
 
-    return fetch(url, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(info)
-    }).then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    });
+    return corsPostJSON(url, info).then(function (res) { return res.json(); });
   }
-
-  /* ---------- 列出 Firebase Storage 中的访问记录 ---------- */
-
-  function listVisitsFromFirebase(bucket) {
-    var url = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
-              '/o?prefix=' + encodeURIComponent('visits/') + '&maxResults=200';
-
-    return fetch(url, { cache: 'no-store', mode: 'cors' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      })
-      .then(function (data) {
-        var items = (data && data.items) ? data.items : [];
-        if (!items.length) return [];
-
-        // 批量下载每个文件的内容
-        var promises = items.map(function (item) {
-          var name = item.name;
-          if (!name) return Promise.resolve(null);
-          var dlUrl = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
-                      '/o/' + encodeURIComponent(name) + '?alt=media';
-          return fetch(dlUrl, { cache: 'no-store', mode: 'cors' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .catch(function () { return null; });
-        });
-
-        return Promise.all(promises).then(function (results) {
-          return results.filter(function (r) { return r !== null; });
-        });
-      });
-  }
-
-  /* ---------- 统一上传入口 ---------- */
 
   function uploadVisitInfo() {
     if (!state.tokenConfig) return;
@@ -847,36 +907,50 @@
       info.token = state.tokenConfig.token;
 
       var endpoint = state.tokenConfig.endpoint;
-      var secret = state.tokenConfig.secret;
 
-      // 如果是 Firebase Storage 端点，使用 Firebase REST API
       if (isFirebaseEndpoint(endpoint)) {
-        // 从端点 URL 中提取 bucket 名称
-        var bucketMatch = endpoint.match(/\/b\/([^\/]+)/);
-        var bucket = bucketMatch ? bucketMatch[1] : endpoint.replace(/^https?:\/\/[^\/]+\/b\//, '').replace(/\/.*$/, '');
+        var bucket = extractBucket(endpoint);
         if (!bucket) return Promise.reject(new Error('无法从端点提取 bucket 名称'));
-
         return uploadVisitToFirebase(info, bucket);
       }
 
-      // 自定义端点：使用原来的 POST 方式
-      return fetch(endpoint, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: state.tokenConfig.token,
-          secret: secret,
-          type: 'visit',
-          info: info
-        })
+      // 自定义端点
+      return corsPostJSON(endpoint, {
+        token: state.tokenConfig.token,
+        secret: state.tokenConfig.secret,
+        type: 'visit',
+        info: info
       });
     }).catch(function (e) {
-      try { console.warn('上传访问信息失败：', e && e.message ? e.message : e); } catch (err) {}
+      try { console.warn('上传访问信息失败：', translateError(e)); } catch (err) {}
     });
   }
 
-  /* ---------- 获取管理员访问日志 ---------- */
+  /* =========================================================
+     列出访问记录
+     ========================================================= */
+
+  function listVisitsFromFirebase(bucket) {
+    var url = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
+              '/o?prefix=' + encodeURIComponent('visits/') + '&maxResults=200';
+
+    return corsGetJSON(url).then(function (data) {
+      var items = (data && data.items) ? data.items : [];
+      if (!items.length) return [];
+
+      var promises = items.map(function (item) {
+        var name = item.name;
+        if (!name) return Promise.resolve(null);
+        var dlUrl = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
+                    '/o/' + encodeURIComponent(name) + '?alt=media';
+        return corsGetJSON(dlUrl).catch(function () { return null; });
+      });
+
+      return Promise.all(promises).then(function (results) {
+        return results.filter(function (r) { return r !== null; });
+      });
+    });
+  }
 
   function fetchAdminLogs() {
     if (!state.tokenConfig) return Promise.reject(new Error('未读取到令牌配置（令牌.txt）'));
@@ -884,25 +958,16 @@
     var endpoint = state.tokenConfig.endpoint;
 
     if (isFirebaseEndpoint(endpoint)) {
-      var bucketMatch = endpoint.match(/\/b\/([^\/]+)/);
-      var bucket = bucketMatch ? bucketMatch[1] : endpoint.replace(/^https?:\/\/[^\/]+\/b\//, '').replace(/\/.*$/, '');
+      var bucket = extractBucket(endpoint);
       if (!bucket) return Promise.reject(new Error('无法从端点提取 bucket 名称'));
       return listVisitsFromFirebase(bucket);
     }
 
-    return fetch(endpoint, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: state.tokenConfig.token,
-        secret: state.tokenConfig.secret,
-        type: 'list'
-      })
-    }).then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    });
+    return corsPostJSON(endpoint, {
+      token: state.tokenConfig.token,
+      secret: state.tokenConfig.secret,
+      type: 'list'
+    }).then(function (res) { return res.json(); });
   }
 
   /* =========================================================
@@ -996,7 +1061,7 @@
   }
 
   /* =========================================================
-     标题三连击跳转
+     标题三连击
      ========================================================= */
 
   var titleClickCount = 0;
@@ -1058,14 +1123,7 @@
   }
 
   /* =========================================================
-     构建成绩单数据结构
-     ========================================================= 
-     
-     排名逻辑：
-       1. 如果原始文件有“排名”列，直接使用
-       2. 如果没有排名列，按科目总分从高到低自动排序
-       3. 并列同名次，后续跳号（1, 2, 2, 4）
-       4. 缺考学生不参与排名，名次为空
+     构建成绩单（含自动排名）
      ========================================================= */
 
   function buildSheet(rows) {
@@ -1126,15 +1184,11 @@
 
     if (!records.length) throw new Error('没有解析到任何学生记录。');
 
-    /* ---------- 自动排名逻辑 ---------- */
+    /* 自动排名：无排名列时按总分从高到低排，并列同名次，缺考不参与 */
     if (col.rank === -1) {
-      // 只有正常参加考试的学生参与排名
       var ranked = records.filter(function (r) { return r.absent === ''; });
-
-      // 按总分从高到低排序
       ranked.sort(function (a, b) { return b.total - a.total; });
 
-      // 竞赛排名：并列同名次，后续跳号（1, 2, 2, 4）
       var lastScore = null;
       var lastRank = 0;
       for (var k = 0; k < ranked.length; k++) {
@@ -1145,7 +1199,6 @@
         ranked[k].rank = String(lastRank);
       }
 
-      // 缺考学生排名留空
       records.forEach(function (r) {
         if (r.absent !== '') r.rank = '';
       });
@@ -1202,10 +1255,8 @@
     }).catch(function (err) {
       if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
         setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
-      } else if (err && err.status) {
-        setMsg(loadMsg, '读取失败：服务器返回 ' + err.status + '。', 'error');
       } else {
-        setMsg(loadMsg, '读取失败：' + (err && err.message ? err.message : '无法访问成绩单文件。'), 'error');
+        setMsg(loadMsg, '读取失败：' + translateError(err), 'error');
       }
     }).then(function () {
       loadBtn.disabled = false;
@@ -1311,7 +1362,7 @@
     parseBufferToRows(buffer, name).then(function (rows) {
       onImported(rows, name);
     }).catch(function (e) {
-      setMsg(loadMsg, '读取文件失败：' + (e && e.message ? e.message : String(e)), 'error');
+      setMsg(loadMsg, '读取文件失败：' + translateError(e), 'error');
     });
   }
 
@@ -1675,7 +1726,11 @@
       setMsg(logsMsg, '共 ' + records.length + ' 条记录。', 'ok');
       renderAdminLogs(records);
     }).catch(function (e) {
-      setMsg(logsMsg, '获取失败：' + (e && e.message ? e.message : String(e)), 'error');
+      var msg = translateError(e);
+      if (/跨域|网络请求失败/.test(msg)) {
+        msg += '。如持续失败，请检查 Firebase Storage 是否配置了允许本站访问的 CORS 规则。';
+      }
+      setMsg(logsMsg, '获取失败：' + msg, 'error');
     });
   }
 
@@ -2151,11 +2206,7 @@
       fileInput.value = '';
       var err = reader.error;
       var msg = err && err.message ? err.message : '无法访问该文件';
-      if (/permission|could not be read|not be read/i.test(msg)) {
-        setMsg(loadMsg, '读取文件失败：浏览器已撤销对该文件的访问权限，请重新点击“选择本地文件”再选一次，或刷新页面后重试。', 'error');
-      } else {
-        setMsg(loadMsg, '读取文件失败：' + msg, 'error');
-      }
+      setMsg(loadMsg, '读取文件失败：' + translateError({ message: msg }), 'error');
     };
 
     reader.readAsArrayBuffer(f);
