@@ -22,7 +22,7 @@
   button.warn:hover { background: #9a6e00; }
   button.danger { background: #cf222e; }
   button.danger:hover { background: #a40e26; }
-  .btn-sm { width: auto; padding: .25rem .7rem; font-size: .8rem; }
+  .btn-sm { width: auto; padding: .25rem .7rem; font-size: .8rem; margin-right: 4px; }
   .row { display: flex; gap: .5rem; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 140px; }
   .status { padding: .6rem .8rem; border-radius: 6px; font-size: .9rem; margin-top: .8rem; display: none; }
@@ -37,6 +37,9 @@
   .hint { font-size: .8rem; color: #57606a; margin-top: .3rem; }
   .edit-actions { display: flex; gap: .5rem; margin-top: .8rem; }
   .edit-actions button { flex: 1; }
+  .commit-msg { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .commit-sha { font-family: ui-monospace, Consolas, monospace; font-size: .82rem; }
+  .commit-time { font-size: .82rem; color: #57606a; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -72,6 +75,16 @@
     <button id="loadBtn" class="secondary">读取文件列表</button>
   </div>
   <div id="listStatus" class="status"></div>
+</div>
+
+<!-- ==================== 最近更新记录 ==================== -->
+<div class="card">
+  <h3>🕒 最近 18 条更新记录</h3>
+  <div style="margin-bottom:.8rem">
+    <button id="loadCommitsBtn" class="secondary">读取更新记录</button>
+  </div>
+  <div id="commitStatus" class="status"></div>
+  <div id="commitList" class="muted">尚未加载，请先点击“读取更新记录”。</div>
 </div>
 
 <!-- ==================== 在线编辑器 ==================== -->
@@ -257,6 +270,7 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
         const p = JSON.stringify(item.path);
         const s = JSON.stringify(item.sha);
         actions = `<button class="secondary btn-sm" onclick='editFile(${p}, ${s})'>编辑</button>
+                   <button class="secondary btn-sm" onclick='downloadFile(${p})'>下载</button>
                    <button class="warn btn-sm" onclick='renameFile(${p}, ${s})'>重命名</button>
                    <button class="danger btn-sm" onclick='doDelete(${p}, ${s})'>删除</button>`;
       }
@@ -273,6 +287,103 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   } catch (e) {
     setStatus('listStatus', 'err', '❌ ' + e.message);
     document.getElementById('fileList').innerHTML = '<span class="muted">加载失败</span>';
+  }
+});
+
+// ==================== 下载文件 ====================
+async function downloadFile(filePath) {
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
+
+  setStatus('listStatus', 'info', '正在准备下载 ' + filePath + ' …');
+  try {
+    // 通过 API 获取文件内容（支持公开仓库和私有仓库）
+    const data = await gh(
+      `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(cfg.branch)}`
+    );
+
+    if (!data.content) {
+      // 文件超过 1MB 时 API 不返回 content，改用 download_url
+      if (data.download_url) {
+        const raw = await fetch(data.download_url, { cache: 'no-store' });
+        if (!raw.ok) throw new Error('HTTP ' + raw.status);
+        const blob = await raw.blob();
+        triggerDownload(blob, filePath);
+        setStatus('listStatus', 'ok', '✅ 已开始下载 ' + filePath);
+        return;
+      }
+      throw new Error('无法获取文件内容');
+    }
+
+    // 将 Base64 还原成二进制 Blob（正确处理二进制文件）
+    const clean = data.content.replace(/\s/g, '');
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes]);
+
+    triggerDownload(blob, filePath);
+    setStatus('listStatus', 'ok', '✅ 已开始下载 ' + filePath);
+  } catch (e) {
+    setStatus('listStatus', 'err', '❌ 下载失败：' + e.message);
+  }
+}
+
+function triggerDownload(blob, filePath) {
+  const fileName = filePath.split('/').pop();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ==================== 最近更新记录 ====================
+document.getElementById('loadCommitsBtn').addEventListener('click', async () => {
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('commitStatus', 'err', e.message); return; }
+
+  setStatus('commitStatus', 'info', '加载中…');
+  document.getElementById('commitList').innerHTML = '<span class="muted">加载中…</span>';
+
+  try {
+    const data = await gh(
+      `/repos/${cfg.owner}/${cfg.repo}/commits?sha=${encodeURIComponent(cfg.branch)}&per_page=18`
+    );
+
+    if (!Array.isArray(data)) throw new Error(data.message || '返回格式错误');
+
+    if (data.length === 0) {
+      document.getElementById('commitList').innerHTML = '<span class="muted">暂无提交记录</span>';
+      hideStatus('commitStatus');
+      return;
+    }
+
+    let html = '<table><thead><tr><th>时间</th><th>提交信息</th><th>作者</th><th>SHA</th></tr></thead><tbody>';
+    for (const c of data) {
+      const date = new Date(c.commit.author.date);
+      const dateStr = date.toLocaleString('zh-CN', { hour12: false });
+      const fullMsg = c.commit.message || '';
+      const firstLine = fullMsg.split('\n')[0];
+      const author = (c.commit.author && c.commit.author.name) || (c.author && c.author.login) || '—';
+      const sha = c.sha.slice(0, 7);
+
+      html += `<tr>
+        <td class="commit-time">${escapeHtml(dateStr)}</td>
+        <td class="commit-msg" title="${escapeHtml(fullMsg)}">${escapeHtml(firstLine)}</td>
+        <td>${escapeHtml(author)}</td>
+        <td class="commit-sha"><a href="${c.html_url}" target="_blank" rel="noopener">${sha}</a></td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('commitList').innerHTML = html;
+    hideStatus('commitStatus');
+  } catch (e) {
+    setStatus('commitStatus', 'err', '❌ ' + e.message);
+    document.getElementById('commitList').innerHTML = '<span class="muted">加载失败</span>';
   }
 });
 
@@ -364,7 +475,7 @@ async function renameFile(oldPath, fileSha) {
     oldPath
   );
 
-  if (newPath === null) return; // 用户取消
+  if (newPath === null) return;
   const trimmed = newPath.trim().replace(/^\/+|\/+$/g, '');
 
   if (!trimmed) { alert('新路径不能为空'); return; }
@@ -374,15 +485,12 @@ async function renameFile(oldPath, fileSha) {
 
   setStatus('listStatus', 'info', '重命名中…');
   try {
-    // 1. 获取分支最新 commit
     const ref = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/ref/heads/${encodeURIComponent(cfg.branch)}`);
     const latestCommitSha = ref.object.sha;
 
-    // 2. 获取该 commit 对应的 tree
     const commit = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/commits/${latestCommitSha}`);
     const baseTreeSha = commit.tree.sha;
 
-    // 3. 创建新 tree：旧路径 sha=null（删除），新路径指向原 blob
     const newTree = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/trees`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -395,7 +503,6 @@ async function renameFile(oldPath, fileSha) {
       })
     });
 
-    // 4. 创建新 commit
     const newCommit = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/commits`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -406,7 +513,6 @@ async function renameFile(oldPath, fileSha) {
       })
     });
 
-    // 5. 更新分支引用
     await gh(`/repos/${cfg.owner}/${cfg.repo}/git/refs/heads/${encodeURIComponent(cfg.branch)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -483,7 +589,7 @@ async function doDelete(filePath, sha) {
   }
 
   const input = prompt('删除文件需要密码，请输入：');
-  if (input === null) return; // 用户取消
+  if (input === null) return;
   if (input !== PASSWORD) {
     alert('密码错误，删除已取消。');
     return;
