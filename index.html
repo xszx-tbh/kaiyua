@@ -324,7 +324,7 @@
     sheet: null, label: '',
     tocEntries: [], trendPoints: [],
     idNameMap: null,
-    adminMode: false
+    adminMode: false      // 每次加载重置为 false，不再从 sessionStorage 恢复
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -638,8 +638,7 @@
   function tryAdminLogin(pwd) {
     return fetchText(sheetURL('mm.txt')).then(function (text) {
       if (pwd === String(text).trim()) {
-        state.adminMode = true;
-        try { sessionStorage.setItem('glyAdmin', '1'); } catch (e) {}
+        state.adminMode = true;    // 仅存内存，不持久化；刷新即重置
         applyIdNameState();
         dateInput.value = '';
         setMsg(loadMsg, '管理员模式已启用。', 'ok');
@@ -649,12 +648,6 @@
     }).catch(function () {
       return false;
     });
-  }
-
-  function restoreAdmin() {
-    try {
-      if (sessionStorage.getItem('glyAdmin') === '1') state.adminMode = true;
-    } catch (e) {}
   }
 
   /* ---------------- CSV 解析 ---------------- */
@@ -1728,7 +1721,6 @@
 
   /* ---------------- 启动 ---------------- */
 
-  restoreAdmin();
   loadNotice();
   loadTOC();
   loadIdName();
