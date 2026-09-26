@@ -22,6 +22,12 @@
   }
   @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;} }
 
+  .admin-badge{
+    display:inline-block; margin-left:8px; padding:3px 9px;
+    background:#fff3d6; color:#b06a00; font-size:12px; font-weight:600;
+    border-radius:999px; vertical-align:middle;
+  }
+
   .notice{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:18px 20px; margin-bottom:18px;
@@ -122,6 +128,26 @@
   .stat .stat-v small{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
   .stat.warn .stat-v{color:var(--warn);}
 
+  /* 管理员模式：班级学生名单 */
+  .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
+  .stu{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
+    padding:9px 11px;background:#fbfcfe;cursor:pointer;transition:.15s;min-width:0;
+  }
+  .stu:hover{border-color:var(--brand);background:#f4f7ff;}
+  .stu.active{border-color:var(--brand);background:#eaf0ff;box-shadow:0 0 0 2px rgba(59,108,246,.15);}
+  .stu .rk{font-size:11px;color:var(--muted);min-width:22px;flex:0 0 auto;text-align:center;}
+  .stu .nm{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .stu .sc{font-size:12px;color:var(--muted);flex:0 0 auto;}
+  .stu .sc b{color:var(--brand);font-size:14px;}
+  .stu .sc b.abs{color:var(--bad);font-size:12px;}
+  .list-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin-top:20px;padding-top:14px;border-top:1px dashed var(--line);
+    font-size:13px;color:var(--muted);
+  }
+  .list-head b{color:var(--txt);font-weight:600;}
+
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);
@@ -184,7 +210,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>广州开元学校高一学生成绩查询</h1>
+  <h1>广州开元学校高一学生成绩查询<span id="adminBadge" class="admin-badge" style="display:none;">管理员</span></h1>
 
   <!-- ============ 主视图 ============ -->
   <div id="mainView">
@@ -218,13 +244,14 @@
     </div>
 
     <div class="panel" id="classPanel" hidden>
-      <label for="classInput">班级（仅显示统计）</label>
+      <label for="classInput">班级</label>
       <div class="row">
         <input id="classInput" type="text" placeholder="如 1班 或 1" autocomplete="off">
         <button id="classBtn">查询</button>
       </div>
       <div id="classMsg" class="msg"></div>
       <div id="classStats" class="stats"></div>
+      <div id="classListWrap"></div>
     </div>
 
     <div class="panel" id="searchPanel" hidden>
@@ -293,7 +320,12 @@
 (function () {
   'use strict';
 
-  var state = { sheet: null, label: '', tocEntries: [], trendPoints: [], idNameMap: null };
+  var state = {
+    sheet: null, label: '',
+    tocEntries: [], trendPoints: [],
+    idNameMap: null,
+    adminMode: false
+  };
 
   var $ = function (id) { return document.getElementById(id); };
   var dateInput      = $('dateInput'),
@@ -304,6 +336,7 @@
       classBtn       = $('classBtn'),
       classMsg       = $('classMsg'),
       classStats     = $('classStats'),
+      classListWrap  = $('classListWrap'),
       searchPanel    = $('searchPanel'),
       searchLabel    = $('searchLabel'),
       idRow          = $('idRow'),
@@ -339,7 +372,8 @@
       trendResultPanel = $('trendResultPanel'),
       trendChart     = $('trendChart'),
       trendStats     = $('trendStats'),
-      trendSummary   = $('trendSummary');
+      trendSummary   = $('trendSummary'),
+      adminBadge     = $('adminBadge');
 
   /* ---------------- 学科映射 ---------------- */
 
@@ -535,6 +569,19 @@
   /* ---------------- 考号名字库 ---------------- */
 
   function applyIdNameState() {
+    if (state.adminMode) {
+      idRow.style.display = 'none';
+      trendIdRow.style.display = 'none';
+      searchLabel.textContent = '姓名（支持模糊搜索）';
+      trendLabel.textContent  = '姓名（支持模糊搜索）';
+      nameInput.placeholder  = '如 张三';
+      trendName.placeholder  = '如 张三';
+      adminBadge.style.display = '';
+      return;
+    }
+
+    adminBadge.style.display = 'none';
+
     var has = !!state.idNameMap;
     idRow.style.display = has ? '' : 'none';
     trendIdRow.style.display = has ? '' : 'none';
@@ -576,14 +623,38 @@
     });
   }
 
-  /* 校验：返回 null 表示通过，否则返回错误字符串 */
   function validateIdName(id, name) {
-    if (!state.idNameMap) return null; // 未加载考号库，跳过校验
+    if (state.adminMode) return null;      // 管理员免校验
+    if (!state.idNameMap) return null;     // 未加载考号库，跳过校验
     if (!id) return '请输入考号。';
     var expected = state.idNameMap[id];
     if (!expected) return '未找到考号“' + id + '”，请检查后重试。';
     if (expected !== name) return '考号与姓名不匹配，请检查后重试。';
     return null;
+  }
+
+  /* ---------------- 管理员模式 ---------------- */
+
+  function tryAdminLogin(pwd) {
+    return fetchText(sheetURL('mm.txt')).then(function (text) {
+      if (pwd === String(text).trim()) {
+        state.adminMode = true;
+        try { sessionStorage.setItem('glyAdmin', '1'); } catch (e) {}
+        applyIdNameState();
+        dateInput.value = '';
+        setMsg(loadMsg, '管理员模式已启用。', 'ok');
+        return true;
+      }
+      return false;
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function restoreAdmin() {
+    try {
+      if (sessionStorage.getItem('glyAdmin') === '1') state.adminMode = true;
+    } catch (e) {}
   }
 
   /* ---------------- CSV 解析 ---------------- */
@@ -707,15 +778,16 @@
     idInput.value = '';
     nameInput.value = '';
     classStats.innerHTML = '';
+    classListWrap.innerHTML = '';
     setMsg(classMsg, '', '');
     setMsg(searchMsg, '', '');
     resultEl.innerHTML = '';
   }
 
-  /* ---------------- 从服务器加载 ---------------- */
+  /* ---------------- 加载流程 ---------------- */
 
-  function handleLoad() {
-    var fileName = sanitizeFileName(dateInput.value);
+  function doLoadSheet(rawName) {
+    var fileName = sanitizeFileName(rawName);
     if (!fileName) { setMsg(loadMsg, '请输入考试日期或文件名。', 'error'); return; }
     dateInput.value = fileName;
 
@@ -742,6 +814,25 @@
       loadBtn.disabled = false;
       loadBtn.textContent = '读取';
     });
+  }
+
+  function handleLoad() {
+    var raw = dateInput.value.trim();
+
+    // 检测 gly + 密码
+    if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
+      var pwd = raw.slice(3).trim();
+      if (pwd) {
+        loadBtn.disabled = true;
+        tryAdminLogin(pwd).then(function (ok) {
+          loadBtn.disabled = false;
+          if (!ok) doLoadSheet(raw);
+        });
+        return;
+      }
+    }
+
+    doLoadSheet(raw);
   }
 
   /* ---------------- SheetJS 按需加载 ---------------- */
@@ -878,7 +969,7 @@
     }
   }
 
-  /* ---------------- 考试目录（ml.txt） ---------------- */
+  /* ---------------- 考试目录 ---------------- */
 
   function loadTOC() {
     fetchText(sheetURL('ml.txt')).then(function (text) {
@@ -958,7 +1049,7 @@
     setMsg(tocMsg, '', '');
   }
 
-  /* ---------------- 班级查询（仅统计） ---------------- */
+  /* ---------------- 班级查询 ---------------- */
 
   function doClassQuery() {
     if (!state.sheet) { setMsg(classMsg, '请先读取成绩单。', 'error'); return; }
@@ -970,6 +1061,7 @@
     var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
 
     classStats.innerHTML = '';
+    classListWrap.innerHTML = '';
     resultEl.innerHTML = '';
 
     if (!list.length) { setMsg(classMsg, '未找到该班级。', 'error'); return; }
@@ -994,9 +1086,51 @@
     html += statBox('平均主观分', taken.length ? fmt1(avgSub) : '—', taken.length ? ' 分' : '');
     classStats.innerHTML = html;
 
-    setMsg(classMsg, (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
-      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '') +
-      ' · 如需查看个人成绩，请在下方输入姓名（及考号）。', 'info');
+    var info = (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
+      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '');
+    if (!state.adminMode) {
+      info += ' · 如需查看个人成绩，请在下方输入姓名（及考号）。';
+    }
+    setMsg(classMsg, info, 'info');
+
+    // 仅管理员模式显示学生名单
+    if (state.adminMode) {
+      var head = document.createElement('div');
+      head.className = 'list-head';
+      head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人</span>';
+      classListWrap.appendChild(head);
+
+      var grid = document.createElement('div');
+      grid.className = 'stu-list';
+
+      list.forEach(function (rec) {
+        var el = document.createElement('div');
+        el.className = 'stu';
+
+        var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
+        var scoreHtml = rec.absent
+          ? '<b class="abs">缺考</b>'
+          : '<b>' + esc(fmt(rec.total)) + '</b>';
+
+        el.innerHTML =
+          '<span class="rk">' + esc(rankTxt) + '</span>' +
+          '<span class="nm">' + esc(rec.name) + '</span>' +
+          '<span class="sc">' + scoreHtml + '</span>';
+
+        el.addEventListener('click', function () {
+          var prev = grid.querySelector('.stu.active');
+          if (prev) prev.classList.remove('active');
+          el.classList.add('active');
+          resultEl.innerHTML = '';
+          resultEl.appendChild(buildCard(rec));
+          resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        grid.appendChild(el);
+      });
+
+      classListWrap.appendChild(grid);
+    }
   }
 
   function statBox(label, value, unit, warn) {
@@ -1086,20 +1220,33 @@
     if (!state.sheet) { setMsg(searchMsg, '请先读取成绩单。', 'error'); return; }
 
     var key = nameInput.value.trim();
-    var id  = idInput.value.trim();
     resultEl.innerHTML = '';
 
-    if (!key) { setMsg(searchMsg, '请输入完整姓名。', 'error'); return; }
+    if (!key) { setMsg(searchMsg, '请输入姓名。', 'error'); return; }
 
-    var err = validateIdName(id, key);
-    if (err) { setMsg(searchMsg, err, 'error'); return; }
+    if (!state.adminMode) {
+      var id = idInput.value.trim();
+      var err = validateIdName(id, key);
+      if (err) { setMsg(searchMsg, err, 'error'); return; }
+    }
 
-    var list = state.sheet.records.filter(function (r) { return r.name === key; });
+    var list;
+    if (state.adminMode) {
+      // 管理员：模糊搜索
+      list = state.sheet.records.filter(function (r) { return r.name.indexOf(key) > -1; });
+    } else {
+      // 普通：精确匹配
+      list = state.sheet.records.filter(function (r) { return r.name === key; });
+    }
+
     if (!list.length) {
-      setMsg(searchMsg, '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
+      setMsg(searchMsg,
+        state.adminMode ? '未找到包含“' + key + '”的学生。'
+                        : '未找到“' + key + '”，请输入完整准确的姓名。',
+        'error');
       return;
     }
-    setMsg(searchMsg, list.length > 1 ? ('找到 ' + list.length + ' 条记录：') : '', 'info');
+    setMsg(searchMsg, '找到 ' + list.length + ' 条记录：', 'info');
     list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
   }
 
@@ -1177,7 +1324,7 @@
     progressText.textContent = label || ('已完成 ' + done + ' / ' + total);
   }
 
-  function findStudentInRows(rows, name) {
+  function findStudentInRows(rows, name, fuzzy) {
     if (!rows || !rows.length) return null;
     var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
     var iName   = header.indexOf('姓名');
@@ -1190,7 +1337,9 @@
 
     for (var i = 1; i < rows.length; i++) {
       var r = rows[i];
-      if (((r[iName] || '').trim()) === name) {
+      var rName = ((r[iName] || '')).trim();
+      var matched = fuzzy ? rName.indexOf(name) > -1 : rName === name;
+      if (matched) {
         return {
           total:  toNum(r[iTotal]),
           rank:   iRank !== -1 ? (r[iRank] || '').trim() : '',
@@ -1204,12 +1353,14 @@
 
   function startTrendQuery() {
     var name = trendName.value.trim();
-    var id   = trendId.value.trim();
 
-    if (!name) { setMsg(trendMsg, '请输入完整姓名。', 'error'); return; }
+    if (!name) { setMsg(trendMsg, '请输入姓名。', 'error'); return; }
 
-    var err = validateIdName(id, name);
-    if (err) { setMsg(trendMsg, err, 'error'); return; }
+    if (!state.adminMode) {
+      var id = trendId.value.trim();
+      var err = validateIdName(id, name);
+      if (err) { setMsg(trendMsg, err, 'error'); return; }
+    }
 
     var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
     var selected = [];
@@ -1234,6 +1385,7 @@
       return ea.date.localeCompare(eb.date) || ea.id.localeCompare(eb.id);
     });
 
+    var fuzzy = state.adminMode;
     var results = [];
     var errors = [];
     var idx = 0;
@@ -1241,17 +1393,17 @@
     function next() {
       if (idx >= selected.length) { finishTrendQuery(results, errors); return; }
 
-      var id2 = selected[idx];
-      var entry = entriesMap[id2] || parseSheetId(id2);
-      updateProgress(idx, selected.length, '正在读取 ' + id2 + '…');
+      var sid = selected[idx];
+      var entry = entriesMap[sid] || parseSheetId(sid);
+      updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
 
-      fetchSheet(id2).then(function (got) {
+      fetchSheet(sid).then(function (got) {
         try {
           var rows = parseCSV(got.text);
-          var rec = findStudentInRows(rows, name);
+          var rec = findStudentInRows(rows, name, fuzzy);
           if (rec) {
             results.push({
-              id: id2,
+              id: sid,
               date: entry.date,
               subject: entry.subject,
               label: formatDateShort(entry.date),
@@ -1262,16 +1414,16 @@
               absent: rec.absent
             });
           } else {
-            errors.push({ id: id2, msg: '未找到该学生' });
+            errors.push({ id: sid, msg: '未找到该学生' });
           }
         } catch (e) {
-          errors.push({ id: id2, msg: '解析失败' });
+          errors.push({ id: sid, msg: '解析失败' });
         }
         idx++;
         updateProgress(idx, selected.length);
         next();
       }).catch(function () {
-        errors.push({ id: id2, msg: '读取失败' });
+        errors.push({ id: sid, msg: '读取失败' });
         idx++;
         updateProgress(idx, selected.length);
         next();
@@ -1576,6 +1728,7 @@
 
   /* ---------------- 启动 ---------------- */
 
+  restoreAdmin();
   loadNotice();
   loadTOC();
   loadIdName();
