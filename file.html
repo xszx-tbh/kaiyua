@@ -96,23 +96,32 @@ async function loadToken() {
   try {
     const res = await fetch(encodeURI('./github令牌.txt'), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = (await res.text()).trim();
+    let text = (await res.text()).trim();
     if (!text) throw new Error('文件为空');
+
+    // 如果文件里没有写前缀，自动补上 github_pat_
+    if (!text.startsWith('github_pat_')) {
+      text = 'github_pat_' + text;
+    }
+
     TOKEN = text;
     el.className = 'status ok';
-    el.textContent = '✅ 已读取令牌（' + text.slice(0, 12) + '…）';
+    el.textContent = '✅ 已读取令牌（' + text.slice(0, 16) + '…）';
   } catch (e) {
     el.className = 'status err';
     el.innerHTML = '❌ 无法读取 github令牌.txt：' + e.message +
       '<div class="hint">如果你是双击打开（file://），浏览器会禁止读取同目录文件。请用本地服务器访问；也可以在下面手动粘贴令牌。</div>' +
-      '<div style="margin-top:.6rem"><input id="manualToken" placeholder="手动粘贴 GitHub 令牌">' +
+      '<div style="margin-top:.6rem"><input id="manualToken" placeholder="手动粘贴 GitHub 令牌（可不带前缀）">' +
       '<button style="width:auto;margin-top:.5rem" onclick="useManualToken()">使用</button></div>';
   }
 }
 
 function useManualToken() {
-  const v = document.getElementById('manualToken').value.trim();
+  let v = document.getElementById('manualToken').value.trim();
   if (!v) return;
+  if (!v.startsWith('github_pat_')) {
+    v = 'github_pat_' + v;
+  }
   TOKEN = v;
   const el = document.getElementById('tokenStatus');
   el.className = 'status ok';
