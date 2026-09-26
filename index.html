@@ -339,7 +339,7 @@
     sheet: null, label: '',
     tocEntries: [], trendPoints: [],
     idNameMap: null,
-    tokenConfig: null,
+    githubConfig: null,
     adminMode: false
   };
 
@@ -400,62 +400,37 @@
       logsContent    = $('logsContent');
 
   /* =========================================================
-     错误信息翻译（把浏览器抛出的英文错误转成中文）
+     错误翻译
      ========================================================= */
 
   function translateError(err) {
     if (!err) return '未知错误';
     var msg = (err && err.message) ? String(err.message) : String(err);
     if (!msg) return '未知错误';
-
-    // 已经含中文，直接返回
     if (/[\u4e00-\u9fa5]/.test(msg)) return msg;
 
-    if (/Failed to fetch|Load failed|Failed to load/i.test(msg)) {
+    if (/Failed to fetch|Load failed|Failed to load/i.test(msg))
       return '网络请求失败（可能是网络问题、跨域限制或文件不存在）';
-    }
-    if (/NetworkError|Network error|network request failed/i.test(msg)) {
+    if (/NetworkError|Network error|network request failed/i.test(msg))
       return '网络连接错误';
-    }
-    if (/TypeError/i.test(msg)) {
+    if (/TypeError/i.test(msg))
       return '请求失败（可能是网络或跨域问题）';
-    }
-    if (/AbortError/i.test(msg)) {
+    if (/AbortError/i.test(msg))
       return '请求被中断';
-    }
-    if (/CORS|cross-origin/i.test(msg)) {
+    if (/CORS|cross-origin/i.test(msg))
       return '跨域请求被拒绝（服务器未允许本站访问）';
-    }
-    if (/timeout/i.test(msg)) {
+    if (/timeout/i.test(msg))
       return '请求超时';
-    }
-    if (/Not allowed to load local resource/i.test(msg)) {
+    if (/Not allowed to load local resource/i.test(msg))
       return '浏览器禁止直接读取本地文件';
-    }
-    if (/permission|could not be read|not be read/i.test(msg)) {
+    if (/permission|could not be read|not be read/i.test(msg))
       return '浏览器已撤销对该文件的访问权限';
-    }
 
-    // HTTP 状态码
     var m = msg.match(/HTTP\s+(\d+)/i);
     if (m) {
-      var code = m[1];
-      var map = {
-        '400': '请求参数错误',
-        '401': '身份验证失败',
-        '403': '访问被拒绝（可能是跨域或权限问题）',
-        '404': '未找到资源',
-        '405': '请求方法不被允许',
-        '408': '请求超时',
-        '429': '请求过于频繁',
-        '500': '服务器内部错误',
-        '502': '网关错误',
-        '503': '服务暂不可用',
-        '504': '网关超时'
-      };
-      return map[code] || ('服务器返回错误 ' + code);
+      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突','408':'请求超时','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
+      return map[m[1]] || ('服务器返回错误 ' + m[1]);
     }
-
     return msg;
   }
 
@@ -490,15 +465,13 @@
   }
 
   function formatDate(d) {
-    if (d && d.length === 8 && /^\d+$/.test(d)) {
+    if (d && d.length === 8 && /^\d+$/.test(d))
       return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
-    }
     return d;
   }
   function formatDateShort(d) {
-    if (d && d.length === 8 && /^\d+$/.test(d)) {
+    if (d && d.length === 8 && /^\d+$/.test(d))
       return d.slice(4, 6) + '-' + d.slice(6, 8);
-    }
     return d;
   }
 
@@ -523,14 +496,8 @@
     if (!isFinite(n)) return '0';
     return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
   }
-  function fmt1(n) {
-    if (!isFinite(n)) return '0';
-    return (Math.round(n * 10) / 10).toFixed(1);
-  }
-  function fmt2(n) {
-    if (!isFinite(n)) return '0';
-    return (Math.round(n * 100) / 100).toFixed(2);
-  }
+  function fmt1(n) { return (!isFinite(n) ? '0' : (Math.round(n * 10) / 10).toFixed(1)); }
+  function fmt2(n) { return (!isFinite(n) ? '0' : (Math.round(n * 100) / 100).toFixed(2)); }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -560,10 +527,6 @@
       .replace(/[一二三四五六七八九十]+/g, cnToNum);
   }
 
-  /* =========================================================
-     路径拼接
-     ========================================================= */
-
   function sheetURL(fileName) {
     var href = document.baseURI || location.href;
     href = href.replace(/[?#].*$/, '');
@@ -571,20 +534,13 @@
     return href + encodeURIComponent(fileName);
   }
 
-  /* =========================================================
-     文本解码
-     ========================================================= */
-
   function decodeBuffer(buf) {
     var bytes = new Uint8Array(buf);
     var offset = 0;
     if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) offset = 3;
-
     var text = '';
-    try {
-      text = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(offset));
-    } catch (e) { text = ''; }
-
+    try { text = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(offset)); }
+    catch (e) { text = ''; }
     var bad = (text.match(/\uFFFD/g) || []).length;
     if (bad > 0) {
       try {
@@ -595,24 +551,14 @@
     return text;
   }
 
-  /* =========================================================
-     请求
-     ========================================================= */
-
   function fetchText(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
-      if (!res.ok) {
-        var e = new Error('HTTP ' + res.status);
-        e.status = res.status;
-        throw e;
-      }
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
       var ct = (res.headers.get('content-type') || '').toLowerCase();
       return res.arrayBuffer().then(function (buf) {
         var text = decodeBuffer(buf);
         if (ct.indexOf('text/html') > -1 || /^\s*<(!doctype|html)/i.test(text)) {
-          var e2 = new Error('NOT_FOUND_AS_HTML');
-          e2.code = 'HTML_FALLBACK';
-          throw e2;
+          var e2 = new Error('NOT_FOUND_AS_HTML'); e2.code = 'HTML_FALLBACK'; throw e2;
         }
         return text;
       });
@@ -621,11 +567,7 @@
 
   function fetchBuffer(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
-      if (!res.ok) {
-        var e = new Error('HTTP ' + res.status);
-        e.status = res.status;
-        throw e;
-      }
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
       return res.arrayBuffer();
     });
   }
@@ -641,11 +583,9 @@
     if (typeof XLSX !== 'undefined') { cb(true); return; }
     if (xlsxStatus === 'ready') { cb(true); return; }
     if (xlsxStatus === 'failed') { cb(false); return; }
-
     xlsxCallbacks.push(cb);
     if (xlsxStatus === 'loading') return;
     xlsxStatus = 'loading';
-
     var s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
     s.onload = function () {
@@ -661,14 +601,9 @@
     document.head.appendChild(s);
   }
 
-  /* =========================================================
-     buffer → rows
-     ========================================================= */
-
   function parseBufferToRows(buf, fileName) {
     var extMatch = fileName.match(/\.([^.]+)$/);
     var ext = extMatch ? extMatch[1].toLowerCase() : '';
-
     if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
       return new Promise(function (resolve, reject) {
         ensureXLSX(function (ok) {
@@ -681,44 +616,27 @@
             var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
             var rows = raw.map(function (row) {
               return row.map(function (cell) { return cell == null ? '' : String(cell).trim(); });
-            }).filter(function (row) {
-              return row.some(function (c) { return c !== ''; });
-            });
+            }).filter(function (row) { return row.some(function (c) { return c !== ''; }); });
             resolve(rows);
-          } catch (e) {
-            reject(e);
-          }
+          } catch (e) { reject(e); }
         });
       });
     }
-
     var text = decodeBuffer(buf);
     if (/^\s*<(!doctype|html)/i.test(text)) {
-      var e = new Error('NOT_FOUND_AS_HTML');
-      e.code = 'HTML_FALLBACK';
+      var e = new Error('NOT_FOUND_AS_HTML'); e.code = 'HTML_FALLBACK';
       return Promise.reject(e);
     }
     return Promise.resolve(parseCSV(text));
   }
 
-  /* =========================================================
-     读取成绩单（多后缀尝试）
-     ========================================================= */
-
   function fetchSheetRows(inputName) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
     var candidates = hasExt ? [base] : [
-      base + '.txt',
-      base + '.csv',
-      base + '.xlsx',
-      base + '.xls',
-      base + '.xlsm',
-      base + '.xlsb'
+      base + '.txt', base + '.csv', base + '.xlsx', base + '.xls', base + '.xlsm', base + '.xlsb'
     ];
-
     var last = null;
-
     function tryNext(i) {
       if (i >= candidates.length) return Promise.reject(last);
       var fileName = candidates[i];
@@ -728,9 +646,7 @@
           return { rows: rows, fileName: fileName, url: url };
         });
       }).catch(function (err) {
-        err.url = url;
-        err.fileName = fileName;
-        last = err;
+        err.url = url; err.fileName = fileName; last = err;
         return tryNext(i + 1);
       });
     }
@@ -745,7 +661,6 @@
     noticeBody.classList.remove('fail');
     noticeBody.classList.add('loading');
     noticeBody.textContent = '公告加载中…';
-
     fetchText(sheetURL('gg.txt')).then(function (text) {
       var t = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/[ \t]+$/gm, '').trim();
       noticeBody.classList.remove('loading');
@@ -759,21 +674,138 @@
   }
 
   /* =========================================================
-     令牌.txt
+     GitHub 令牌.txt 读取
+     格式：
+       第1行：令牌（代码自动加 github_pat_ 前缀）
+       第2行：owner/repo
+       第3行：分支（可选，默认 main）
      ========================================================= */
 
-  function loadTokenConfig() {
-    return fetchText(sheetURL('令牌.txt')).then(function (text) {
+  function loadGithubConfig() {
+    return fetchText(sheetURL('github令牌.txt')).then(function (text) {
       var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       if (lines[0]) lines[0] = lines[0].replace(/^\uFEFF/, '');
-      var token = (lines[0] || '').trim();
-      var secret = (lines[1] || '').trim();
-      var endpoint = (lines[2] || '').trim();
-      if (!token || !secret || !endpoint) throw new Error('内容不完整');
-      state.tokenConfig = { token: token, secret: secret, endpoint: endpoint };
+      var rawToken = (lines[0] || '').trim();
+      var repoSpec = (lines[1] || '').trim();
+      var branch = (lines[2] || '').trim() || 'main';
+
+      if (!rawToken || !repoSpec) throw new Error('内容不完整');
+
+      // 若用户已经手动写了前缀，则不重复添加
+      var token = /^github_pat_/.test(rawToken) ? rawToken : ('github_pat_' + rawToken);
+
+      var parts = repoSpec.split('/');
+      if (parts.length < 2) throw new Error('仓库格式应为 owner/repo');
+      var owner = parts[0].trim();
+      var repo = parts.slice(1).join('/').trim();
+
+      state.githubConfig = {
+        token: token,
+        owner: owner,
+        repo: repo,
+        branch: branch
+      };
     }).catch(function () {
-      state.tokenConfig = null;
+      state.githubConfig = null;
     });
+  }
+
+  /* =========================================================
+     Base64（支持中文）
+     ========================================================= */
+
+  function b64EncodeUTF8(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function b64DecodeUTF8(b64) {
+    return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+  }
+
+  /* =========================================================
+     GitHub API：读 / 写文件
+     ========================================================= */
+
+  var LOG_FILE = '日记.txt';
+
+  function ghReadFile(path) {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
+    var cfg = state.githubConfig;
+    var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo +
+              '/contents/' + encodeURIComponent(path) + '?ref=' + encodeURIComponent(cfg.branch);
+
+    return fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + cfg.token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    }).then(function (res) {
+      if (res.status === 404) return { content: '', sha: null };
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      return res.json().then(function (data) {
+        var content = '';
+        if (data && data.content) {
+          try { content = b64DecodeUTF8(data.content); }
+          catch (e) { content = ''; }
+        }
+        return { content: content, sha: data ? data.sha : null };
+      });
+    });
+  }
+
+  function ghWriteFile(path, content, sha, message) {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
+    var cfg = state.githubConfig;
+    var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo +
+              '/contents/' + encodeURIComponent(path);
+
+    var body = {
+      message: message || ('更新 ' + path),
+      content: b64EncodeUTF8(content),
+      branch: cfg.branch
+    };
+    if (sha) body.sha = sha;
+
+    return fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + cfg.token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          var e = new Error('HTTP ' + res.status + (t ? ' - ' + t.slice(0, 200) : ''));
+          e.status = res.status;
+          throw e;
+        });
+      }
+      return res.json();
+    });
+  }
+
+  /* 追加一行到 日记.txt（带回退重试） */
+  function ghAppendLog(line) {
+    function attempt(retriesLeft) {
+      return ghReadFile(LOG_FILE).then(function (r) {
+        var newContent = r.content || '';
+        if (newContent && !/\n$/.test(newContent)) newContent += '\n';
+        newContent += line + '\n';
+        return ghWriteFile(LOG_FILE, newContent, r.sha, 'add visit log');
+      }).catch(function (e) {
+        var msg = (e && e.message) ? String(e.message) : '';
+        if (retriesLeft > 0 && (/HTTP\s+409/.test(msg) || /sha/i.test(msg) || /HTTP\s+5\d\d/.test(msg))) {
+          return new Promise(function (r) { setTimeout(r, 400); }).then(function () {
+            return attempt(retriesLeft - 1);
+          });
+        }
+        throw e;
+      });
+    }
+    return attempt(3);
   }
 
   /* =========================================================
@@ -783,6 +815,9 @@
   function collectDeviceInfo() {
     var nav = navigator, scr = window.screen;
     var info = {
+      localTime: new Date().toString(),
+      timestamp: new Date().toISOString(),
+      ip: '',
       userAgent: nav.userAgent || '',
       language: nav.language || '',
       languages: (nav.languages || []).join(','),
@@ -800,13 +835,9 @@
       timezone: '',
       timezoneOffset: new Date().getTimezoneOffset(),
       pageUrl: location.href,
-      referrer: document.referrer || '',
-      timestamp: new Date().toISOString(),
-      localTime: new Date().toString()
+      referrer: document.referrer || ''
     };
-    try {
-      info.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    } catch (e) {}
+    try { info.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
     return info;
   }
 
@@ -817,157 +848,17 @@
       .catch(function () { return ''; });
   }
 
-  /* =========================================================
-     Firebase Storage — bucket 名提取
-     ========================================================= */
-
-  function extractBucket(endpoint) {
-    if (!endpoint) return '';
-    var m = endpoint.match(/\/b\/([^\/\?#]+)/);
-    if (m) return decodeURIComponent(m[1]);
-    // 用户可能直接填了 bucket 名称
-    if (!/^https?:\/\//i.test(endpoint)) return endpoint.replace(/\/.*$/, '').trim();
-    return '';
-  }
-
-  function isFirebaseEndpoint(endpoint) {
-    return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(endpoint || '');
-  }
-
-  /* =========================================================
-     CORS 代理兜底工具
-     ========================================================= */
-
-  var CORS_PROXIES = [
-    function (url) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url); },
-    function (url) { return 'https://corsproxy.io/?' + encodeURIComponent(url); }
-  ];
-
-  function fetchViaProxy(url) {
-    var i = 0;
-    function tryNext() {
-      if (i >= CORS_PROXIES.length) {
-        return Promise.reject(new Error('跨域请求被拒绝（服务器未允许本站访问）'));
-      }
-      var proxied = CORS_PROXIES[i](url);
-      i++;
-      return fetch(proxied, { cache: 'no-store' })
-        .then(function (res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res;
-        })
-        .catch(tryNext);
-    }
-    return tryNext();
-  }
-
-  /* GET：先直连，失败用代理 */
-  function corsGetJSON(url) {
-    return fetch(url, { cache: 'no-store' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      })
-      .catch(function () {
-        return fetchViaProxy(url).then(function (res) { return res.json(); });
-      });
-  }
-
-  /* POST：使用 text/plain 避免触发预检，让 Firebase 直接接收 */
-  function corsPostJSON(url, data) {
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: JSON.stringify(data)
-    }).then(function (res) {
-      // Firebase 成功时返回 200/201
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res;
-    });
-  }
-
-  /* =========================================================
-     上传访问记录
-     ========================================================= */
-
-  function uploadVisitToFirebase(info, bucket) {
-    var fileName = 'visits/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.json';
-    var url = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
-              '/o?name=' + encodeURIComponent(fileName);
-
-    return corsPostJSON(url, info).then(function (res) { return res.json(); });
-  }
-
+  /* 上传访问信息 */
   function uploadVisitInfo() {
-    if (!state.tokenConfig) return;
-
+    if (!state.githubConfig) return;
     fetchIP().then(function (ip) {
       var info = collectDeviceInfo();
       info.ip = ip;
-      info.token = state.tokenConfig.token;
-
-      var endpoint = state.tokenConfig.endpoint;
-
-      if (isFirebaseEndpoint(endpoint)) {
-        var bucket = extractBucket(endpoint);
-        if (!bucket) return Promise.reject(new Error('无法从端点提取 bucket 名称'));
-        return uploadVisitToFirebase(info, bucket);
-      }
-
-      // 自定义端点
-      return corsPostJSON(endpoint, {
-        token: state.tokenConfig.token,
-        secret: state.tokenConfig.secret,
-        type: 'visit',
-        info: info
-      });
+      var line = JSON.stringify(info);
+      return ghAppendLog(line);
     }).catch(function (e) {
       try { console.warn('上传访问信息失败：', translateError(e)); } catch (err) {}
     });
-  }
-
-  /* =========================================================
-     列出访问记录
-     ========================================================= */
-
-  function listVisitsFromFirebase(bucket) {
-    var url = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
-              '/o?prefix=' + encodeURIComponent('visits/') + '&maxResults=200';
-
-    return corsGetJSON(url).then(function (data) {
-      var items = (data && data.items) ? data.items : [];
-      if (!items.length) return [];
-
-      var promises = items.map(function (item) {
-        var name = item.name;
-        if (!name) return Promise.resolve(null);
-        var dlUrl = 'https://firebasestorage.googleapis.com/v0/b/' + encodeURIComponent(bucket) +
-                    '/o/' + encodeURIComponent(name) + '?alt=media';
-        return corsGetJSON(dlUrl).catch(function () { return null; });
-      });
-
-      return Promise.all(promises).then(function (results) {
-        return results.filter(function (r) { return r !== null; });
-      });
-    });
-  }
-
-  function fetchAdminLogs() {
-    if (!state.tokenConfig) return Promise.reject(new Error('未读取到令牌配置（令牌.txt）'));
-
-    var endpoint = state.tokenConfig.endpoint;
-
-    if (isFirebaseEndpoint(endpoint)) {
-      var bucket = extractBucket(endpoint);
-      if (!bucket) return Promise.reject(new Error('无法从端点提取 bucket 名称'));
-      return listVisitsFromFirebase(bucket);
-    }
-
-    return corsPostJSON(endpoint, {
-      token: state.tokenConfig.token,
-      secret: state.tokenConfig.secret,
-      type: 'list'
-    }).then(function (res) { return res.json(); });
   }
 
   /* =========================================================
@@ -986,10 +877,8 @@
       adminLogsRow.hidden = false;
       return;
     }
-
     adminBadge.style.display = 'none';
     adminLogsRow.hidden = true;
-
     var has = !!state.idNameMap;
     idRow.style.display = has ? '' : 'none';
     trendIdRow.style.display = has ? '' : 'none';
@@ -1003,7 +892,6 @@
     return fetchText(sheetURL('考号名字.txt')).then(function (text) {
       var rows = parseCSV(text);
       if (!rows.length) throw new Error('空文件');
-
       var header = rows[0];
       var idIdx = -1, nameIdx = -1;
       for (var i = 0; i < header.length; i++) {
@@ -1012,7 +900,6 @@
         if (h === '姓名' && nameIdx === -1) nameIdx = i;
       }
       if (idIdx === -1 || nameIdx === -1) throw new Error('未找到“考号/姓名”列');
-
       var map = Object.create(null);
       for (var j = 1; j < rows.length; j++) {
         var r = rows[j];
@@ -1022,13 +909,10 @@
         if (id && nm) map[id] = nm;
       }
       if (!Object.keys(map).length) throw new Error('无有效数据');
-
       state.idNameMap = map;
     }).catch(function () {
       state.idNameMap = null;
-    }).then(function () {
-      applyIdNameState();
-    });
+    }).then(function () { applyIdNameState(); });
   }
 
   function validateIdName(id, name) {
@@ -1042,7 +926,7 @@
   }
 
   /* =========================================================
-     管理员模式
+     管理员模式 & 标题三连击
      ========================================================= */
 
   function tryAdminLogin(pwd) {
@@ -1055,26 +939,15 @@
         return true;
       }
       return false;
-    }).catch(function () {
-      return false;
-    });
+    }).catch(function () { return false; });
   }
 
-  /* =========================================================
-     标题三连击
-     ========================================================= */
-
-  var titleClickCount = 0;
-  var titleClickTimer = null;
-
+  var titleClickCount = 0, titleClickTimer = null;
   pageTitle.addEventListener('click', function () {
     if (!state.adminMode) return;
     titleClickCount++;
     if (titleClickTimer) clearTimeout(titleClickTimer);
-    titleClickTimer = setTimeout(function () {
-      titleClickCount = 0;
-      titleClickTimer = null;
-    }, 800);
+    titleClickTimer = setTimeout(function () { titleClickCount = 0; titleClickTimer = null; }, 800);
     if (titleClickCount >= 3) {
       titleClickCount = 0;
       if (titleClickTimer) { clearTimeout(titleClickTimer); titleClickTimer = null; }
@@ -1091,14 +964,12 @@
     for (i = 0; i < line.length; i++) {
       c = line[i];
       if (inQ) {
-        if (c === '"') {
-          if (line[i + 1] === '"') { cur += '"'; i++; }
-          else { inQ = false; }
-        } else { cur += c; }
+        if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+        else cur += c;
       } else {
-        if (c === '"') { inQ = true; }
+        if (c === '"') inQ = true;
         else if (c === ',') { out.push(cur); cur = ''; }
-        else { cur += c; }
+        else cur += c;
       }
     }
     out.push(cur);
@@ -1116,9 +987,7 @@
   }
 
   function findCol(header, keyword) {
-    for (var i = 0; i < header.length; i++) {
-      if (header[i].indexOf(keyword) > -1) return i;
-    }
+    for (var i = 0; i < header.length; i++) if (header[i].indexOf(keyword) > -1) return i;
     return -1;
   }
 
@@ -1128,18 +997,12 @@
 
   function buildSheet(rows) {
     if (!rows.length) throw new Error('文件内容为空。');
-
     var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
     var col = {
-      rank:   findCol(header, '排名'),
-      cls:    findCol(header, '班级'),
-      name:   header.indexOf('姓名'),
-      absent: findCol(header, '缺考'),
-      total:  findCol(header, '科目总分'),
-      obj:    findCol(header, '客观分'),
-      sub:    findCol(header, '主观分')
+      rank: findCol(header, '排名'), cls: findCol(header, '班级'),
+      name: header.indexOf('姓名'), absent: findCol(header, '缺考'),
+      total: findCol(header, '科目总分'), obj: findCol(header, '客观分'), sub: findCol(header, '主观分')
     };
-
     if (col.name === -1) throw new Error('文件中没有找到“姓名”列。');
 
     var questions = [];
@@ -1152,7 +1015,6 @@
       if (header[i + 1] === '作答选项') q.ansIdx = i + 1;
       questions.push(q);
     });
-
     if (!questions.length) throw new Error('文件中没有找到题目得分列。');
 
     var records = [];
@@ -1160,93 +1022,51 @@
       var r = rows[i];
       var name = (r[col.name] || '').trim();
       if (!name) continue;
-
       records.push({
-        rank:   col.rank !== -1 ? (r[col.rank] || '').trim() : '',
-        cls:    col.cls !== -1 ? (r[col.cls] || '').trim() : '',
+        rank: col.rank !== -1 ? (r[col.rank] || '').trim() : '',
+        cls: col.cls !== -1 ? (r[col.cls] || '').trim() : '',
         clsKey: normalizeClass(col.cls !== -1 ? r[col.cls] : ''),
-        name:   name,
+        name: name,
         absent: col.absent !== -1 ? (r[col.absent] || '').trim() : '',
-        total:  toNum(r[col.total]),
-        obj:    toNum(r[col.obj]),
-        sub:    toNum(r[col.sub]),
+        total: toNum(r[col.total]), obj: toNum(r[col.obj]), sub: toNum(r[col.sub]),
         details: questions.map(function (q) {
-          return {
-            name:   q.name,
-            full:   q.full,
-            score:  toNum(r[q.scoreIdx]),
-            ans:    q.ansIdx !== null ? (r[q.ansIdx] || '').trim() : '',
-            hasAns: q.ansIdx !== null
-          };
+          return { name: q.name, full: q.full, score: toNum(r[q.scoreIdx]),
+            ans: q.ansIdx !== null ? (r[q.ansIdx] || '').trim() : '', hasAns: q.ansIdx !== null };
         })
       });
     }
-
     if (!records.length) throw new Error('没有解析到任何学生记录。');
 
-    /* 自动排名：无排名列时按总分从高到低排，并列同名次，缺考不参与 */
     if (col.rank === -1) {
       var ranked = records.filter(function (r) { return r.absent === ''; });
       ranked.sort(function (a, b) { return b.total - a.total; });
-
-      var lastScore = null;
-      var lastRank = 0;
+      var lastScore = null, lastRank = 0;
       for (var k = 0; k < ranked.length; k++) {
-        if (lastScore === null || ranked[k].total !== lastScore) {
-          lastRank = k + 1;
-          lastScore = ranked[k].total;
-        }
+        if (lastScore === null || ranked[k].total !== lastScore) { lastRank = k + 1; lastScore = ranked[k].total; }
         ranked[k].rank = String(lastRank);
       }
-
-      records.forEach(function (r) {
-        if (r.absent !== '') r.rank = '';
-      });
+      records.forEach(function (r) { if (r.absent !== '') r.rank = ''; });
     }
-
     return { records: records, questions: questions };
   }
 
-  /* =========================================================
-     应用成绩单
-     ========================================================= */
-
   function activateSheet(sheet, label) {
-    state.sheet = sheet;
-    state.label = label;
-
+    state.sheet = sheet; state.label = label;
     setMsg(loadMsg, '已读取 ' + label + '，共 ' + sheet.records.length + ' 人。', 'ok');
-
-    classPanel.hidden = false;
-    searchPanel.hidden = false;
-
-    classInput.value = '';
-    idInput.value = '';
-    nameInput.value = '';
-    classStats.innerHTML = '';
-    classListWrap.innerHTML = '';
-    setMsg(classMsg, '', '');
-    setMsg(searchMsg, '', '');
+    classPanel.hidden = false; searchPanel.hidden = false;
+    classInput.value = ''; idInput.value = ''; nameInput.value = '';
+    classStats.innerHTML = ''; classListWrap.innerHTML = '';
+    setMsg(classMsg, '', ''); setMsg(searchMsg, '', '');
     resultEl.innerHTML = '';
   }
-
-  /* =========================================================
-     加载流程
-     ========================================================= */
 
   function doLoadSheet(rawName) {
     var fileName = sanitizeFileName(rawName);
     if (!fileName) { setMsg(loadMsg, '请输入考试日期或文件名。', 'error'); return; }
     dateInput.value = fileName;
-
-    loadBtn.disabled = true;
-    loadBtn.textContent = '读取中';
+    loadBtn.disabled = true; loadBtn.textContent = '读取中';
     setMsg(loadMsg, '正在读取…', 'info');
-    resultEl.innerHTML = '';
-    classPanel.hidden = true;
-    searchPanel.hidden = true;
-    state.sheet = null;
-
+    resultEl.innerHTML = ''; classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
     fetchSheetRows(fileName).then(function (got) {
       var sheet;
       try { sheet = buildSheet(got.rows); }
@@ -1258,15 +1078,11 @@
       } else {
         setMsg(loadMsg, '读取失败：' + translateError(err), 'error');
       }
-    }).then(function () {
-      loadBtn.disabled = false;
-      loadBtn.textContent = '读取';
-    });
+    }).then(function () { loadBtn.disabled = false; loadBtn.textContent = '读取'; });
   }
 
   function handleLoad() {
     var raw = dateInput.value.trim();
-
     if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
       var pwd = raw.slice(3).trim();
       if (pwd) {
@@ -1278,12 +1094,11 @@
         return;
       }
     }
-
     doLoadSheet(raw);
   }
 
   /* =========================================================
-     原始表格
+     原始表格 & 本地文件导入
      ========================================================= */
 
   var MAX_RAW_ROWS = 3000;
@@ -1291,17 +1106,11 @@
   function showRawTable(rows) {
     rawTableWrap.innerHTML = '';
     if (!rows.length) return;
-
     var display = rows.length > MAX_RAW_ROWS ? rows.slice(0, MAX_RAW_ROWS) : rows;
     var colCount = 0;
     display.forEach(function (r) { if (r.length > colCount) colCount = r.length; });
-
-    var wrap = document.createElement('div');
-    wrap.className = 'raw-table-wrap';
-
-    var table = document.createElement('table');
-    table.className = 'raw-table';
-
+    var wrap = document.createElement('div'); wrap.className = 'raw-table-wrap';
+    var table = document.createElement('table'); table.className = 'raw-table';
     var thead = document.createElement('thead');
     var trh = document.createElement('tr');
     for (var c = 0; c < colCount; c++) {
@@ -1310,9 +1119,7 @@
       th.textContent = v || ('列 ' + (c + 1));
       trh.appendChild(th);
     }
-    thead.appendChild(trh);
-    table.appendChild(thead);
-
+    thead.appendChild(trh); table.appendChild(thead);
     var tbody = document.createElement('tbody');
     for (var i = 1; i < display.length; i++) {
       var tr = document.createElement('tr');
@@ -1323,47 +1130,31 @@
       }
       tbody.appendChild(tr);
     }
-    table.appendChild(tbody);
-
-    wrap.appendChild(table);
-    rawTableWrap.appendChild(wrap);
-
+    table.appendChild(tbody); wrap.appendChild(table); rawTableWrap.appendChild(wrap);
     if (rows.length > MAX_RAW_ROWS) {
-      var note = document.createElement('div');
-      note.className = 'msg info';
+      var note = document.createElement('div'); note.className = 'msg info';
       note.textContent = '文件较大，仅显示前 ' + MAX_RAW_ROWS + ' 行（共 ' + rows.length + ' 行）。';
       rawTableWrap.appendChild(note);
     }
   }
 
-  /* =========================================================
-     本地文件导入
-     ========================================================= */
-
   function onImported(rows, fileName) {
     if (!rows || !rows.length) { setMsg(loadMsg, '文件内容为空。', 'error'); return; }
     showRawTable(rows);
     dateInput.value = String(fileName).replace(/\.[^.]+$/, '');
-
     var sheet = null;
     try { sheet = buildSheet(rows); } catch (e) { sheet = null; }
-
     if (sheet) activateSheet(sheet, fileName);
     else {
-      state.sheet = null;
-      classPanel.hidden = true;
-      searchPanel.hidden = true;
+      state.sheet = null; classPanel.hidden = true; searchPanel.hidden = true;
       resultEl.innerHTML = '';
       setMsg(loadMsg, '已读取 ' + fileName + '，已显示原始表格（非成绩单格式，无法启用查询）。', 'info');
     }
   }
 
   function processBuffer(buffer, name) {
-    parseBufferToRows(buffer, name).then(function (rows) {
-      onImported(rows, name);
-    }).catch(function (e) {
-      setMsg(loadMsg, '读取文件失败：' + translateError(e), 'error');
-    });
+    parseBufferToRows(buffer, name).then(function (rows) { onImported(rows, name); })
+      .catch(function (e) { setMsg(loadMsg, '读取文件失败：' + translateError(e), 'error'); });
   }
 
   /* =========================================================
@@ -1383,18 +1174,13 @@
       if (!entries.length) { tocPanel.hidden = true; return; }
       renderTOC(entries);
       tocPanel.hidden = false;
-    }).catch(function () {
-      state.tocEntries = [];
-      tocPanel.hidden = true;
-    });
+    }).catch(function () { state.tocEntries = []; tocPanel.hidden = true; });
   }
 
   function sortSubjects(subjects) {
     subjects.sort(function (a, b) {
-      var ia = SUBJECT_ORDER.indexOf(a);
-      var ib = SUBJECT_ORDER.indexOf(b);
-      if (ia === -1) ia = 1000;
-      if (ib === -1) ib = 1000;
+      var ia = SUBJECT_ORDER.indexOf(a), ib = SUBJECT_ORDER.indexOf(b);
+      if (ia === -1) ia = 1000; if (ib === -1) ib = 1000;
       if (ia !== ib) return ia - ib;
       return a.localeCompare(b, 'zh');
     });
@@ -1408,43 +1194,29 @@
       groups[e.subject].push(e);
     });
     var subjects = sortSubjects(Object.keys(groups));
-
     tocList.innerHTML = '';
     subjects.forEach(function (subj) {
       var list = groups[subj].slice().sort(function (a, b) {
         return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
       });
-
-      var g = document.createElement('div');
-      g.className = 'toc-group';
-
-      var title = document.createElement('div');
-      title.className = 'toc-subject';
-      title.textContent = subj + '（' + list.length + '）';
-      g.appendChild(title);
-
-      var items = document.createElement('div');
-      items.className = 'toc-items';
-
+      var g = document.createElement('div'); g.className = 'toc-group';
+      var title = document.createElement('div'); title.className = 'toc-subject';
+      title.textContent = subj + '（' + list.length + '）'; g.appendChild(title);
+      var items = document.createElement('div'); items.className = 'toc-items';
       list.forEach(function (e) {
         var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'toc-item';
-        btn.textContent = formatDate(e.date);
-        btn.title = e.id;
+        btn.type = 'button'; btn.className = 'toc-item';
+        btn.textContent = formatDate(e.date); btn.title = e.id;
         btn.addEventListener('click', function () {
           var prev = tocList.querySelector('.toc-item.active');
           if (prev) prev.classList.remove('active');
           btn.classList.add('active');
-          dateInput.value = e.id;
-          handleLoad();
+          dateInput.value = e.id; handleLoad();
         });
         items.appendChild(btn);
       });
-      g.appendChild(items);
-      tocList.appendChild(g);
+      g.appendChild(items); tocList.appendChild(g);
     });
-
     setMsg(tocMsg, '', '');
   }
 
@@ -1454,30 +1226,19 @@
 
   function doClassQuery() {
     if (!state.sheet) { setMsg(classMsg, '请先读取成绩单。', 'error'); return; }
-
     var raw = classInput.value.trim();
     if (!raw) { setMsg(classMsg, '请输入班级。', 'error'); return; }
-
     var key = normalizeClass(raw);
     var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
-
-    classStats.innerHTML = '';
-    classListWrap.innerHTML = '';
-    resultEl.innerHTML = '';
-
+    classStats.innerHTML = ''; classListWrap.innerHTML = ''; resultEl.innerHTML = '';
     if (!list.length) { setMsg(classMsg, '未找到该班级。', 'error'); return; }
-
     var taken = list.filter(function (r) { return r.absent === ''; });
     var absentCount = list.length - taken.length;
-
     function avgOf(arr, field) {
       if (!arr.length) return 0;
       return arr.reduce(function (a, r) { return a + r[field]; }, 0) / arr.length;
     }
-    var avgTotal = avgOf(taken, 'total'),
-        avgObj   = avgOf(taken, 'obj'),
-        avgSub   = avgOf(taken, 'sub');
-
+    var avgTotal = avgOf(taken, 'total'), avgObj = avgOf(taken, 'obj'), avgSub = avgOf(taken, 'sub');
     var html = '';
     html += statBox('班级人数', list.length, ' 人');
     if (absentCount > 0) html += statBox('缺考', absentCount, ' 人', true);
@@ -1486,37 +1247,23 @@
     html += statBox('平均客观分', taken.length ? fmt1(avgObj) : '—', taken.length ? ' 分' : '');
     html += statBox('平均主观分', taken.length ? fmt1(avgSub) : '—', taken.length ? ' 分' : '');
     classStats.innerHTML = html;
-
     var info = (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
       (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '');
-    if (!state.adminMode) {
-      info += ' · 如需查看个人成绩，请在下方输入姓名（及考号）。';
-    }
+    if (!state.adminMode) info += ' · 如需查看个人成绩，请在下方输入姓名（及考号）。';
     setMsg(classMsg, info, 'info');
 
     if (state.adminMode) {
-      var head = document.createElement('div');
-      head.className = 'list-head';
+      var head = document.createElement('div'); head.className = 'list-head';
       head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人</span>';
       classListWrap.appendChild(head);
-
-      var grid = document.createElement('div');
-      grid.className = 'stu-list';
-
+      var grid = document.createElement('div'); grid.className = 'stu-list';
       list.forEach(function (rec) {
-        var el = document.createElement('div');
-        el.className = 'stu';
-
+        var el = document.createElement('div'); el.className = 'stu';
         var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
-        var scoreHtml = rec.absent
-          ? '<b class="abs">缺考</b>'
-          : '<b>' + esc(fmt(rec.total)) + '</b>';
-
-        el.innerHTML =
-          '<span class="rk">' + esc(rankTxt) + '</span>' +
+        var scoreHtml = rec.absent ? '<b class="abs">缺考</b>' : '<b>' + esc(fmt(rec.total)) + '</b>';
+        el.innerHTML = '<span class="rk">' + esc(rankTxt) + '</span>' +
           '<span class="nm">' + esc(rec.name) + '</span>' +
           '<span class="sc">' + scoreHtml + '</span>';
-
         el.addEventListener('click', function () {
           var prev = grid.querySelector('.stu.active');
           if (prev) prev.classList.remove('active');
@@ -1525,125 +1272,74 @@
           resultEl.appendChild(buildCard(rec));
           resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
-
         grid.appendChild(el);
       });
-
       classListWrap.appendChild(grid);
     }
   }
 
   function statBox(label, value, unit, warn) {
     return '<div class="stat' + (warn ? ' warn' : '') + '">' +
-             '<div class="stat-l">' + esc(label) + '</div>' +
-             '<div class="stat-v">' + esc(value) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div>' +
-           '</div>';
+      '<div class="stat-l">' + esc(label) + '</div>' +
+      '<div class="stat-v">' + esc(value) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div></div>';
   }
 
   /* =========================================================
-     个人成绩卡片
+     个人成绩卡片 & 查询
      ========================================================= */
 
   function buildCard(rec) {
-    var card = document.createElement('div');
-    card.className = 'card';
-
+    var card = document.createElement('div'); card.className = 'card';
     var isAbsent = rec.absent !== '';
     var sum = rec.details.reduce(function (a, d) { return a + d.score; }, 0);
-
-    var head = document.createElement('div');
-    head.className = 'card-head';
-
-    var rank = document.createElement('div');
-    rank.className = 'rank-badge';
+    var head = document.createElement('div'); head.className = 'card-head';
+    var rank = document.createElement('div'); rank.className = 'rank-badge';
     rank.textContent = (rec.rank && rec.rank !== '0') ? ('第 ' + rec.rank + ' 名') : '暂无排名';
-
-    var who = document.createElement('div');
-    who.className = 'who';
-    var nm = document.createElement('div');
-    nm.className = 'name';
-    nm.textContent = rec.name;
-    if (isAbsent) {
-      var tag = document.createElement('span');
-      tag.className = 'tag-absent';
-      tag.textContent = '缺考';
-      nm.appendChild(tag);
-    }
-    var cl = document.createElement('div');
-    cl.className = 'cls';
-    cl.textContent = rec.cls || '—';
-    who.appendChild(nm);
-    who.appendChild(cl);
-
-    var total = document.createElement('div');
-    total.className = 'total';
+    var who = document.createElement('div'); who.className = 'who';
+    var nm = document.createElement('div'); nm.className = 'name'; nm.textContent = rec.name;
+    if (isAbsent) { var tag = document.createElement('span'); tag.className = 'tag-absent'; tag.textContent = '缺考'; nm.appendChild(tag); }
+    var cl = document.createElement('div'); cl.className = 'cls'; cl.textContent = rec.cls || '—';
+    who.appendChild(nm); who.appendChild(cl);
+    var total = document.createElement('div'); total.className = 'total';
     total.innerHTML = '<b>' + esc(fmt(rec.total)) + '</b>分';
-
-    head.appendChild(rank);
-    head.appendChild(who);
-    head.appendChild(total);
-
-    var meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.innerHTML =
-      '<span>客观分<b>' + esc(fmt(rec.obj)) + '</b></span>' +
+    head.appendChild(rank); head.appendChild(who); head.appendChild(total);
+    var meta = document.createElement('div'); meta.className = 'meta';
+    meta.innerHTML = '<span>客观分<b>' + esc(fmt(rec.obj)) + '</b></span>' +
       '<span>主观分<b>' + esc(fmt(rec.sub)) + '</b></span>' +
       '<span>小题合计<b>' + esc(fmt(sum)) + '</b></span>';
-
-    var grid = document.createElement('div');
-    grid.className = 'grid';
-
+    var grid = document.createElement('div'); grid.className = 'grid';
     rec.details.forEach(function (d) {
       var q = document.createElement('div');
       var cls = 'q ';
-      if (d.score >= d.full) cls += 'full';
-      else if (d.score <= 0) cls += 'zero';
-      else cls += 'part';
+      if (d.score >= d.full) cls += 'full'; else if (d.score <= 0) cls += 'zero'; else cls += 'part';
       q.className = cls;
-
       var label = /^\d+$/.test(d.name) ? ('第' + d.name + '题') : d.name;
       var ansText = '';
       if (d.hasAns) ansText = (d.ans && d.ans !== '#') ? ('选 ' + d.ans) : '未作答';
-
-      q.innerHTML =
-        '<div class="qname">' + esc(label) + '</div>' +
+      q.innerHTML = '<div class="qname">' + esc(label) + '</div>' +
         '<div class="qscore">' + esc(fmt(d.score)) + '<span>/' + esc(fmt(d.full)) + '</span></div>' +
         '<div class="qans">' + esc(ansText) + '</div>';
       grid.appendChild(q);
     });
-
-    card.appendChild(head);
-    card.appendChild(meta);
-    card.appendChild(grid);
+    card.appendChild(head); card.appendChild(meta); card.appendChild(grid);
     return card;
   }
 
   function doSearch() {
     if (!state.sheet) { setMsg(searchMsg, '请先读取成绩单。', 'error'); return; }
-
     var key = nameInput.value.trim();
     resultEl.innerHTML = '';
-
     if (!key) { setMsg(searchMsg, '请输入姓名。', 'error'); return; }
-
     if (!state.adminMode) {
       var id = idInput.value.trim();
       var err = validateIdName(id, key);
       if (err) { setMsg(searchMsg, err, 'error'); return; }
     }
-
     var list;
-    if (state.adminMode) {
-      list = state.sheet.records.filter(function (r) { return r.name.indexOf(key) > -1; });
-    } else {
-      list = state.sheet.records.filter(function (r) { return r.name === key; });
-    }
-
+    if (state.adminMode) list = state.sheet.records.filter(function (r) { return r.name.indexOf(key) > -1; });
+    else list = state.sheet.records.filter(function (r) { return r.name === key; });
     if (!list.length) {
-      setMsg(searchMsg,
-        state.adminMode ? '未找到包含“' + key + '”的学生。'
-                        : '未找到“' + key + '”，请输入完整准确的姓名。',
-        'error');
+      setMsg(searchMsg, state.adminMode ? '未找到包含“' + key + '”的学生。' : '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
       return;
     }
     setMsg(searchMsg, '找到 ' + list.length + ' 条记录：', 'info');
@@ -1651,73 +1347,66 @@
   }
 
   /* =========================================================
-     个人成绩趋势
+     路由 & 趋势视图
      ========================================================= */
 
   function applyRoute() {
     var hash = location.hash;
     var isTrend = hash === '#trend';
     var isLogs = hash === '#adminLogs';
-
-    if (isLogs && !state.adminMode) {
-      location.hash = '';
-      return;
-    }
-
+    if (isLogs && !state.adminMode) { location.hash = ''; return; }
     mainView.hidden = isTrend || isLogs;
     trendView.hidden = !isTrend;
     adminLogsView.hidden = !isLogs;
-
-    if (isTrend) {
-      renderTrendTOC();
-      window.scrollTo(0, 0);
-    }
-    if (isLogs) {
-      loadAdminLogs();
-      window.scrollTo(0, 0);
-    }
+    if (isTrend) { renderTrendTOC(); window.scrollTo(0, 0); }
+    if (isLogs) { loadAdminLogs(); window.scrollTo(0, 0); }
   }
   window.addEventListener('hashchange', applyRoute);
 
   trendBtn.addEventListener('click', function () {
-    if (location.hash !== '#trend') location.hash = 'trend';
-    else applyRoute();
+    if (location.hash !== '#trend') location.hash = 'trend'; else applyRoute();
   });
   backBtn.addEventListener('click', function () {
-    if (location.hash) location.hash = '';
-    else applyRoute();
+    if (location.hash) location.hash = ''; else applyRoute();
   });
-
   adminLogsBtn.addEventListener('click', function () {
     if (!state.adminMode) return;
-    if (location.hash !== '#adminLogs') location.hash = 'adminLogs';
-    else applyRoute();
+    if (location.hash !== '#adminLogs') location.hash = 'adminLogs'; else applyRoute();
   });
   logsBackBtn.addEventListener('click', function () {
-    if (location.hash) location.hash = '';
-    else applyRoute();
+    if (location.hash) location.hash = ''; else applyRoute();
   });
   logsRefreshBtn.addEventListener('click', loadAdminLogs);
 
   /* =========================================================
      管理员：访问日志
+     优先从 GitHub API 拉取最新 日记.txt；未配置 GitHub 时回退到同目录 fetch
      ========================================================= */
 
   function loadAdminLogs() {
     setMsg(logsMsg, '正在加载访问日志…', 'info');
     logsContent.innerHTML = '';
 
-    if (!state.tokenConfig) {
-      setMsg(logsMsg, '未读取到令牌配置（令牌.txt 缺失或内容不完整）。', 'error');
-      return;
+    var promise;
+    if (state.githubConfig) {
+      promise = ghReadFile(LOG_FILE).then(function (r) { return r.content || ''; });
+    } else {
+      promise = fetchText(sheetURL(LOG_FILE));
     }
 
-    fetchAdminLogs().then(function (data) {
+    promise.then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       var records = [];
-      if (Array.isArray(data)) records = data;
-      else if (data && Array.isArray(data.records)) records = data.records;
-      else if (data && Array.isArray(data.data)) records = data.data;
-      else if (data && Array.isArray(data.list)) records = data.list;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        try {
+          var obj = JSON.parse(line);
+          if (obj && typeof obj === 'object') records.push(obj);
+        } catch (e) {
+          // 非 JSON 行，跳过
+        }
+      }
 
       if (!records.length) {
         setMsg(logsMsg, '暂无访问记录。', 'info');
@@ -1727,8 +1416,8 @@
       renderAdminLogs(records);
     }).catch(function (e) {
       var msg = translateError(e);
-      if (/跨域|网络请求失败/.test(msg)) {
-        msg += '。如持续失败，请检查 Firebase Storage 是否配置了允许本站访问的 CORS 规则。';
+      if (!state.githubConfig) {
+        msg += '。未配置 GitHub 令牌，无法获取最新日志。';
       }
       setMsg(logsMsg, '获取失败：' + msg, 'error');
     });
@@ -1736,40 +1425,17 @@
 
   function renderAdminLogs(records) {
     var cols = ['时间', 'IP', '浏览器', '屏幕', '语言', '平台', '时区'];
-
-    var wrap = document.createElement('div');
-    wrap.className = 'raw-table-wrap';
-
-    var table = document.createElement('table');
-    table.className = 'raw-table';
-
-    var thead = document.createElement('thead');
-    var trh = document.createElement('tr');
-    cols.forEach(function (c) {
-      var th = document.createElement('th');
-      th.textContent = c;
-      trh.appendChild(th);
-    });
-    thead.appendChild(trh);
-    table.appendChild(thead);
-
+    var wrap = document.createElement('div'); wrap.className = 'raw-table-wrap';
+    var table = document.createElement('table'); table.className = 'raw-table';
+    var thead = document.createElement('thead'); var trh = document.createElement('tr');
+    cols.forEach(function (c) { var th = document.createElement('th'); th.textContent = c; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
     var tbody = document.createElement('tbody');
-    records.forEach(function (rec) {
-      var info = (rec && rec.info) ? rec.info : (rec || {});
+    records.forEach(function (info) {
       var ua = info.userAgent || '';
       var uaShort = ua.length > 70 ? ua.slice(0, 70) + '…' : ua;
-
-      var time = info.localTime || info.timestamp || rec.timestamp || rec.time || '';
-      var values = [
-        time,
-        info.ip || rec.ip || '',
-        uaShort,
-        info.screen || '',
-        info.language || '',
-        info.platform || '',
-        info.timezone || ''
-      ];
-
+      var time = info.localTime || info.timestamp || '';
+      var values = [time, info.ip || '', uaShort, info.screen || '', info.language || '', info.platform || '', info.timezone || ''];
       var tr = document.createElement('tr');
       values.forEach(function (v) {
         var td = document.createElement('td');
@@ -1779,14 +1445,11 @@
       });
       tbody.appendChild(tr);
     });
-    table.appendChild(tbody);
-
-    wrap.appendChild(table);
-    logsContent.appendChild(wrap);
+    table.appendChild(tbody); wrap.appendChild(table); logsContent.appendChild(wrap);
   }
 
   /* =========================================================
-     趋势视图
+     趋势视图（折线图）
      ========================================================= */
 
   function renderTrendTOC() {
@@ -1795,28 +1458,21 @@
       trendTOCList.innerHTML = '<div class="msg info" style="margin-top:0;">未读取到考试目录（ml.txt）</div>';
       return;
     }
-
     var groups = {};
     entries.forEach(function (e) {
       if (!groups[e.subject]) groups[e.subject] = [];
       groups[e.subject].push(e);
     });
     var subjects = sortSubjects(Object.keys(groups));
-
     var html = '';
     subjects.forEach(function (subj) {
       var list = groups[subj].slice().sort(function (a, b) {
         return b.date.localeCompare(a.date) || a.id.localeCompare(b.id);
       });
-      html += '<div class="toc-group">';
-      html += '<div class="toc-subject">' + esc(subj) + '（' + list.length + '）</div>';
-      html += '<div class="trend-checks">';
+      html += '<div class="toc-group"><div class="toc-subject">' + esc(subj) + '（' + list.length + '）</div><div class="trend-checks">';
       list.forEach(function (e) {
-        html += '<label class="trend-check">' +
-                  '<input type="checkbox" data-id="' + esc(e.id) + '" checked>' +
-                  '<span>' + esc(formatDate(e.date)) + '</span>' +
-                  '<span class="t-id">' + esc(e.id) + '</span>' +
-                '</label>';
+        html += '<label class="trend-check"><input type="checkbox" data-id="' + esc(e.id) + '" checked>' +
+          '<span>' + esc(formatDate(e.date)) + '</span><span class="t-id">' + esc(e.id) + '</span></label>';
       });
       html += '</div></div>';
     });
@@ -1842,25 +1498,16 @@
   function findStudentInRows(rows, name, fuzzy) {
     if (!rows || !rows.length) return null;
     var header = rows[0].map(function (h) { return h.replace(/^\uFEFF/, '').trim(); });
-    var iName   = header.indexOf('姓名');
-    var iTotal  = findCol(header, '科目总分');
-    var iRank   = findCol(header, '排名');
-    var iCls    = findCol(header, '班级');
-    var iAbsent = findCol(header, '缺考');
-
+    var iName = header.indexOf('姓名'), iTotal = findCol(header, '科目总分'),
+        iRank = findCol(header, '排名'), iCls = findCol(header, '班级'), iAbsent = findCol(header, '缺考');
     if (iName === -1) return null;
-
     for (var i = 1; i < rows.length; i++) {
       var r = rows[i];
       var rName = ((r[iName] || '')).trim();
       var matched = fuzzy ? rName.indexOf(name) > -1 : rName === name;
       if (matched) {
-        return {
-          total:  toNum(r[iTotal]),
-          rank:   iRank !== -1 ? (r[iRank] || '').trim() : '',
-          cls:    iCls !== -1 ? (r[iCls] || '').trim() : '',
-          absent: iAbsent !== -1 ? (r[iAbsent] || '').trim() : ''
-        };
+        return { total: toNum(r[iTotal]), rank: iRank !== -1 ? (r[iRank] || '').trim() : '',
+          cls: iCls !== -1 ? (r[iCls] || '').trim() : '', absent: iAbsent !== -1 ? (r[iAbsent] || '').trim() : '' };
       }
     }
     return null;
@@ -1868,215 +1515,110 @@
 
   function startTrendQuery() {
     var name = trendName.value.trim();
-
     if (!name) { setMsg(trendMsg, '请输入姓名。', 'error'); return; }
-
     if (!state.adminMode) {
       var id = trendId.value.trim();
       var err = validateIdName(id, name);
       if (err) { setMsg(trendMsg, err, 'error'); return; }
     }
-
     var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
     var selected = [];
     for (var i = 0; i < cbs.length; i++) if (cbs[i].checked) selected.push(cbs[i].getAttribute('data-id'));
-
     if (!selected.length) { setMsg(trendMsg, '请至少选择一个考试。', 'error'); return; }
-
     setMsg(trendMsg, '', '');
-    trendResultPanel.hidden = true;
-    progressPanel.hidden = false;
+    trendResultPanel.hidden = true; progressPanel.hidden = false;
     updateProgress(0, selected.length, '准备中…');
-
-    trendStartBtn.disabled = true;
-    trendStartBtn.textContent = '查询中…';
-
+    trendStartBtn.disabled = true; trendStartBtn.textContent = '查询中…';
     var entriesMap = {};
     (state.tocEntries || []).forEach(function (e) { entriesMap[e.id] = e; });
-
     selected.sort(function (a, b) {
-      var ea = entriesMap[a] || parseSheetId(a);
-      var eb = entriesMap[b] || parseSheetId(b);
+      var ea = entriesMap[a] || parseSheetId(a), eb = entriesMap[b] || parseSheetId(b);
       return ea.date.localeCompare(eb.date) || ea.id.localeCompare(eb.id);
     });
-
-    var fuzzy = state.adminMode;
-    var results = [];
-    var errors = [];
-    var idx = 0;
-
+    var fuzzy = state.adminMode, results = [], errors = [], idx = 0;
     function next() {
       if (idx >= selected.length) { finishTrendQuery(results, errors); return; }
-
       var sid = selected[idx];
       var entry = entriesMap[sid] || parseSheetId(sid);
       updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
-
       fetchSheetRows(sid).then(function (got) {
         try {
           var rec = findStudentInRows(got.rows, name, fuzzy);
           if (rec) {
-            results.push({
-              id: sid,
-              date: entry.date,
-              subject: entry.subject,
-              label: formatDateShort(entry.date),
-              fullLabel: formatDate(entry.date),
-              total: rec.total,
-              rank: rec.rank,
-              cls: rec.cls,
-              absent: rec.absent
-            });
-          } else {
-            errors.push({ id: sid, msg: '未找到该学生' });
-          }
-        } catch (e) {
-          errors.push({ id: sid, msg: '解析失败' });
-        }
-        idx++;
-        updateProgress(idx, selected.length);
-        next();
-      }).catch(function () {
-        errors.push({ id: sid, msg: '读取失败' });
-        idx++;
-        updateProgress(idx, selected.length);
-        next();
-      });
+            results.push({ id: sid, date: entry.date, subject: entry.subject,
+              label: formatDateShort(entry.date), fullLabel: formatDate(entry.date),
+              total: rec.total, rank: rec.rank, cls: rec.cls, absent: rec.absent });
+          } else errors.push({ id: sid, msg: '未找到该学生' });
+        } catch (e) { errors.push({ id: sid, msg: '解析失败' }); }
+        idx++; updateProgress(idx, selected.length); next();
+      }).catch(function () { errors.push({ id: sid, msg: '读取失败' }); idx++; updateProgress(idx, selected.length); next(); });
     }
-
     next();
   }
 
   function finishTrendQuery(results, errors) {
-    trendStartBtn.disabled = false;
-    trendStartBtn.textContent = '开始查询';
-
+    trendStartBtn.disabled = false; trendStartBtn.textContent = '开始查询';
     if (!results.length) {
-      progressPanel.hidden = true;
-      trendResultPanel.hidden = true;
-      setMsg(trendMsg, '该学生在所选考试中没有任何记录。', 'error');
-      return;
+      progressPanel.hidden = true; trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中没有任何记录。', 'error'); return;
     }
-
     var valid = results.filter(function (r) { return r.absent === ''; });
-
     if (!valid.length) {
-      progressPanel.hidden = true;
-      trendResultPanel.hidden = true;
-      setMsg(trendMsg, '该学生在所选考试中均为缺考。', 'error');
-      return;
+      progressPanel.hidden = true; trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中均为缺考。', 'error'); return;
     }
-
-    valid.sort(function (a, b) {
-      return a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
-    });
-
-    progressPanel.hidden = true;
-    trendResultPanel.hidden = false;
-
+    valid.sort(function (a, b) { return a.date.localeCompare(b.date) || a.id.localeCompare(b.id); });
+    progressPanel.hidden = true; trendResultPanel.hidden = false;
     state.trendPoints = valid;
-
-    requestAnimationFrame(function () {
-      drawChart(valid);
-      renderTrendStats(valid, errors);
-    });
+    requestAnimationFrame(function () { drawChart(valid); renderTrendStats(valid, errors); });
   }
 
   function drawChart(points) {
-    var canvas = trendChart;
-    var wrap = canvas.parentNode;
-    var cssW = Math.max(320, wrap.clientWidth - 8);
-    var cssH = 340;
+    var canvas = trendChart, wrap = canvas.parentNode;
+    var cssW = Math.max(320, wrap.clientWidth - 8), cssH = 340;
     var dpr = window.devicePixelRatio || 1;
-
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    canvas.style.width = cssW + 'px';
-    canvas.style.height = cssH + 'px';
-
+    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cssW, cssH);
-
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cssW, cssH);
     var padL = 46, padR = 22, padT = 26, padB = 62;
-    var plotW = cssW - padL - padR;
-    var plotH = cssH - padT - padB;
-
+    var plotW = cssW - padL - padR, plotH = cssH - padT - padB;
     var scores = points.map(function (p) { return p.total; });
-    var dMin = Math.min.apply(null, scores);
-    var dMax = Math.max.apply(null, scores);
+    var dMin = Math.min.apply(null, scores), dMax = Math.max.apply(null, scores);
     var pad = Math.max(5, (dMax - dMin) * 0.2);
-    var yMin = Math.max(0, Math.floor(dMin - pad));
-    var yMax = Math.ceil(dMax + pad);
+    var yMin = Math.max(0, Math.floor(dMin - pad)), yMax = Math.ceil(dMax + pad);
     if (yMin === yMax) { yMin = Math.max(0, yMin - 5); yMax += 5; }
-
-    function xPos(i) {
-      if (points.length === 1) return padL + plotW / 2;
-      return padL + (i / (points.length - 1)) * plotW;
-    }
-    function yPos(v) {
-      return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
-    }
-
-    ctx.strokeStyle = '#e4e9f2';
-    ctx.lineWidth = 1;
+    function xPos(i) { return points.length === 1 ? padL + plotW / 2 : padL + (i / (points.length - 1)) * plotW; }
+    function yPos(v) { return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
+    ctx.strokeStyle = '#e4e9f2'; ctx.lineWidth = 1;
     var ySteps = 5;
     for (var i = 0; i <= ySteps; i++) {
-      var v = yMin + (yMax - yMin) * i / ySteps;
-      var y = yPos(v);
-      ctx.beginPath();
-      ctx.moveTo(padL, y);
-      ctx.lineTo(padL + plotW, y);
-      ctx.stroke();
-
-      ctx.fillStyle = '#8b95a7';
-      ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
+      var v = yMin + (yMax - yMin) * i / ySteps, y = yPos(v);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+      ctx.fillStyle = '#8b95a7'; ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(String(Math.round(v)), padL - 6, y);
     }
-
-    ctx.strokeStyle = '#3b6cf6';
-    ctx.lineWidth = 2.4;
-    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
     ctx.beginPath();
-    points.forEach(function (p, i) {
-      var x = xPos(i), y = yPos(p.total);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
+    points.forEach(function (p, i) { var x = xPos(i), y = yPos(p.total); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.stroke();
-
     points.forEach(function (p, i) {
       var x = xPos(i), y = yPos(p.total);
-
-      ctx.beginPath();
-      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff';
-      ctx.fill();
-      ctx.strokeStyle = '#3b6cf6';
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-
-      ctx.fillStyle = '#1f2937';
-      ctx.font = 'bold 11.5px -apple-system, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
+      ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.4; ctx.stroke();
+      ctx.fillStyle = '#1f2937'; ctx.font = 'bold 11.5px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillText(String(Math.round(p.total)), x, y - 8);
     });
-
     var labelStep = points.length > 12 ? Math.ceil(points.length / 9) : 1;
     points.forEach(function (p, i) {
       if (i % labelStep !== 0 && i !== points.length - 1) return;
       var x = xPos(i);
-      ctx.save();
-      ctx.translate(x, padT + plotH + 10);
-      ctx.rotate(-Math.PI / 5);
-      ctx.fillStyle = '#8b95a7';
-      ctx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
-      ctx.fillText(p.label, 0, 0);
-      ctx.restore();
+      ctx.save(); ctx.translate(x, padT + plotH + 10); ctx.rotate(-Math.PI / 5);
+      ctx.fillStyle = '#8b95a7'; ctx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText(p.label, 0, 0); ctx.restore();
     });
   }
 
@@ -2085,29 +1627,19 @@
     var scores = points.map(function (p) { return p.total; });
     var sum = scores.reduce(function (a, b) { return a + b; }, 0);
     var avg = sum / n;
-
-    var maxV = Math.max.apply(null, scores);
-    var minV = Math.min.apply(null, scores);
-    var maxIdx = scores.indexOf(maxV);
-    var minIdx = scores.indexOf(minV);
-
+    var maxV = Math.max.apply(null, scores), minV = Math.min.apply(null, scores);
+    var maxIdx = scores.indexOf(maxV), minIdx = scores.indexOf(minV);
     var variance = 0;
     for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
     variance /= n;
     var std = Math.sqrt(variance);
-
     var slope = 0;
     if (n > 1) {
       var xSum = 0, ySum = 0, xySum = 0, x2Sum = 0;
-      for (var j = 0; j < n; j++) {
-        var x = j, y = scores[j];
-        xSum += x; ySum += y;
-        xySum += x * y; x2Sum += x * x;
-      }
+      for (var j = 0; j < n; j++) { var x = j, y = scores[j]; xSum += x; ySum += y; xySum += x * y; x2Sum += x * x; }
       var denom = n * x2Sum - xSum * xSum;
       if (denom !== 0) slope = (n * xySum - xSum * ySum) / denom;
     }
-
     var trendText;
     if (n < 2) trendText = '数据点不足';
     else if (slope > 1) trendText = '明显上升';
@@ -2115,14 +1647,12 @@
     else if (slope < -1) trendText = '明显下降';
     else if (slope < -0.3) trendText = '略有下降';
     else trendText = '基本平稳';
-
     var waveText;
     if (n < 2) waveText = '数据点不足';
     else if (std < 3) waveText = '非常稳定';
     else if (std < 7) waveText = '比较稳定';
     else if (std < 12) waveText = '波动较大';
     else waveText = '波动很大';
-
     var html = '';
     html += statBox('有效次数', n, ' 次');
     html += statBox('平均分', fmt1(avg), ' 分');
@@ -2131,18 +1661,15 @@
     html += statBox('标准差', fmt2(std), '');
     html += statBox('波动幅度', fmt(maxV - minV), ' 分');
     trendStats.innerHTML = html;
-
     var parts = [];
     parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
     parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
     parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
     parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
-
     var text = parts.join('　·　');
     if (errors && errors.length) {
       text += '<br><span style="color:#8b95a7;font-size:12.5px;">另有 ' + errors.length +
-              ' 个文件未能读取或未找到该学生（' +
-              errors.map(function (e) { return e.id; }).join('、') + '）</span>';
+        ' 个文件未能读取或未找到该学生（' + errors.map(function (e) { return e.id; }).join('、') + '）</span>';
     }
     trendSummary.innerHTML = text;
   }
@@ -2177,38 +1704,22 @@
   trendName.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
   trendId.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
 
-  pickFile.addEventListener('click', function () {
-    fileInput.value = '';
-    fileInput.click();
-  });
+  pickFile.addEventListener('click', function () { fileInput.value = ''; fileInput.click(); });
 
   fileInput.addEventListener('change', function () {
     var f = fileInput.files && fileInput.files[0];
     if (!f) return;
-
     var name = f.name || '';
-
     setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
-    rawTableWrap.innerHTML = '';
-    resultEl.innerHTML = '';
-    classPanel.hidden = true;
-    searchPanel.hidden = true;
-    state.sheet = null;
-
+    rawTableWrap.innerHTML = ''; resultEl.innerHTML = '';
+    classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
     var reader = new FileReader();
-
-    reader.onload = function (ev) {
-      fileInput.value = '';
-      processBuffer(ev.target.result, name);
-    };
-
+    reader.onload = function (ev) { fileInput.value = ''; processBuffer(ev.target.result, name); };
     reader.onerror = function () {
       fileInput.value = '';
       var err = reader.error;
-      var msg = err && err.message ? err.message : '无法访问该文件';
-      setMsg(loadMsg, '读取文件失败：' + translateError({ message: msg }), 'error');
+      setMsg(loadMsg, '读取文件失败：' + translateError({ message: (err && err.message) ? err.message : '无法访问该文件' }), 'error');
     };
-
     reader.readAsArrayBuffer(f);
   });
 
@@ -2219,11 +1730,9 @@
   (function initFromQuery() {
     var q = new URLSearchParams(location.search);
     var f = sanitizeFileName(q.get('file') || q.get('date') || '');
-    var n = q.get('name') || '';
-    var c = q.get('class') || '';
+    var n = q.get('name') || '', c = q.get('class') || '';
     if (f) {
-      dateInput.value = f;
-      handleLoad();
+      dateInput.value = f; handleLoad();
       if (n || c) {
         var timer = setInterval(function () {
           if (state.sheet) {
@@ -2244,9 +1753,7 @@
   loadNotice();
   loadTOC();
   loadIdName();
-  loadTokenConfig().then(function () {
-    uploadVisitInfo();
-  });
+  loadGithubConfig().then(function () { uploadVisitInfo(); });
   applyRoute();
   applyIdNameState();
 })();
