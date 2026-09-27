@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>广州开元学校高一学生成绩查询</title>
 <style>
   :root{
@@ -10,17 +10,19 @@
     --muted:#8b95a7; --brand:#3b6cf6; --good:#16a34a; --bad:#e04b4b; --warn:#d97706;
   }
   *{box-sizing:border-box;}
+  html, body{ width: 100%; overflow-x: hidden; }
   body{
     margin:0; padding:28px 16px 40px; background:var(--bg); color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:880px;margin:0 auto;}
+  @media (max-width:520px){ body{ padding: 18px 10px 30px; } }
+  .wrap{max-width:880px;margin:0 auto;width:100%;}
   h1{
     font-size:22px;margin:0 0 20px;text-align:center;letter-spacing:1px;
     line-height:1.5;font-weight:700;user-select:none;
   }
-  @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;} }
+  @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;margin-bottom:14px;} }
 
   .admin-badge{
     display:inline-block; margin-left:8px; padding:3px 9px;
@@ -113,7 +115,9 @@
   .panel{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:18px; margin-bottom:16px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+    width: 100%;
   }
+  @media (max-width:520px){ .panel{ padding: 14px; } }
   .panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;}
   .row{display:flex;gap:10px;}
   .row + .row{margin-top:10px;}
@@ -142,6 +146,7 @@
   .raw-table-wrap{
     overflow:auto; max-height:520px; margin-top:12px;
     border:1px solid var(--line); border-radius:10px; background:#fff;
+    width: 100%;
   }
   .raw-table{
     border-collapse:collapse; font-size:12.5px; white-space:nowrap;
@@ -162,6 +167,7 @@
   .stat.warn .stat-v{color:var(--warn);}
 
   .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
+  @media (max-width:520px){ .stu-list{ grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
   .stu{
     display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
     padding:9px 11px;background:#fbfcfe;cursor:pointer;transition:.15s;min-width:0;
@@ -176,14 +182,16 @@
   .list-head{
     display:flex;align-items:baseline;justify-content:space-between;
     margin-top:20px;padding-top:14px;border-top:1px dashed var(--line);
-    font-size:13px;color:var(--muted);
+    font-size:13px;color:var(--muted);gap: 10px; flex-wrap: wrap;
   }
   .list-head b{color:var(--txt);font-weight:600;}
 
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);
+    width: 100%;
   }
+  @media (max-width:520px){ .card{ padding: 14px; } }
   .card-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
   .rank-badge{
     background:linear-gradient(135deg,#3b6cf6,#6b8cff);color:#fff;font-size:13px;
@@ -227,12 +235,46 @@
   }
   .progress-label b { color: var(--brand); }
 
-  .chart-wrap{
-    position: relative; margin-top: 10px;
-    background: #fbfcfe; border: 1px solid var(--line); border-radius: 10px;
-    padding: 8px 4px;
+  /* ===== 折线图 ===== */
+  .chart-title{
+    font-size: 15px; font-weight: 700; color: var(--txt);
+    text-align: center; margin: 4px 0 10px;
+    line-height: 1.4;
+    word-break: break-all;
   }
-  .chart-wrap canvas{ display: block; width: 100%; height: 340px; }
+  .chart-title .sub{
+    display: block; font-size: 12px; color: var(--muted);
+    font-weight: 400; margin-top: 4px;
+  }
+  .chart-toolbar{
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; margin-bottom: 10px;
+  }
+  .chart-toolbar button{
+    height: 36px; padding: 0 14px; font-size: 13px;
+    background: #eaf0ff; color: var(--brand); font-weight: 600;
+    border-radius: 8px;
+  }
+  .chart-toolbar button:hover:not(:disabled){ background: #dbe6ff; }
+  .chart-toolbar .range-info{
+    display: flex; align-items: center; padding: 0 8px;
+    font-size: 12px; color: var(--muted);
+  }
+
+  .chart-wrap{
+    position: relative;
+    background: #fbfcfe; border: 1px solid var(--line); border-radius: 10px;
+    padding: 4px 4px 8px;
+    width: 100%;
+    overflow: hidden;
+    touch-action: none;
+  }
+  .chart-wrap canvas{
+    display: block;
+    width: 100%;
+    height: auto;
+    touch-action: none;
+  }
 
   .trend-summary{
     margin-top: 14px; font-size: 14px; line-height: 1.8; color: var(--txt);
@@ -340,7 +382,14 @@
 
     <div class="panel" id="trendResultPanel" hidden>
       <label>成绩折线图</label>
-      <div class="chart-wrap">
+      <div class="chart-title" id="chartTitle">—<span class="sub" id="chartSub"></span></div>
+      <div class="chart-toolbar">
+        <button id="zoomInBtn" type="button">放大 +</button>
+        <button id="zoomOutBtn" type="button">缩小 −</button>
+        <button id="zoomResetBtn" type="button">重置</button>
+        <span class="range-info" id="rangeInfo"></span>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
         <canvas id="trendChart"></canvas>
       </div>
       <div id="trendStats" class="stats"></div>
@@ -377,7 +426,9 @@
     tocEntries: [], trendPoints: [],
     idNameMap: null,
     githubConfig: null,
-    adminMode: false
+    adminMode: false,
+    chartView: { start: 0, end: 0 },
+    chartStudentName: ''
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -424,7 +475,14 @@
       progressText   = $('progressText'),
       progressPct    = $('progressPct'),
       trendResultPanel = $('trendResultPanel'),
+      chartTitle     = $('chartTitle'),
+      chartSub       = $('chartSub'),
+      chartWrap      = $('chartWrap'),
       trendChart     = $('trendChart'),
+      zoomInBtn      = $('zoomInBtn'),
+      zoomOutBtn     = $('zoomOutBtn'),
+      zoomResetBtn   = $('zoomResetBtn'),
+      rangeInfo      = $('rangeInfo'),
       trendStats     = $('trendStats'),
       trendSummary   = $('trendSummary'),
       adminBadge     = $('adminBadge'),
@@ -651,8 +709,6 @@
     });
   }
 
-  /* 拉取原始字节；如果服务器返回 HTML（通常意味着文件不存在），
-     直接标记为 NOT_FOUND，避免下游解析库报 "Invalid HTML" 之类的错误 */
   function fetchBuffer(url) {
     return fetch(url, { cache: 'no-store', credentials: 'same-origin' }).then(function (res) {
       if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
@@ -731,12 +787,17 @@
     return Promise.resolve(parseCSV(text));
   }
 
-  /* 多后缀尝试；所有候选都失败时区分“未找到”和“其它错误” */
+  /* 优先 .txt，再 .csv，最后 Excel 表格文件 */
   function fetchSheetRows(inputName) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
     var candidates = hasExt ? [base] : [
-      base + '.txt', base + '.csv', base + '.xlsx', base + '.xls', base + '.xlsm', base + '.xlsb'
+      base + '.txt',
+      base + '.csv',
+      base + '.xlsx',
+      base + '.xls',
+      base + '.xlsm',
+      base + '.xlsb'
     ];
     var last = null;
     var allNotFound = true;
@@ -796,23 +857,25 @@
 
   /* =========================================================
      GitHub 配置读取
+     - glp.txt：仅一行，令牌（自动加 github_pat_ 前缀）
+     - 用户名.txt：第 1 行用户名，第 2 行仓库名（可选第 3 行分支）
      ========================================================= */
 
   function loadGithubConfig() {
     return Promise.all([
-      fetchText(sheetURL('github令牌.txt')).catch(function () { return null; }),
+      fetchText(sheetURL('glp.txt')).catch(function () { return null; }),
       fetchText(sheetURL('用户名.txt')).catch(function () { return null; })
     ]).then(function (results) {
       var tokenText = results[0];
       var nameText = results[1];
 
       if (tokenText == null || nameText == null) {
-        throw new Error('配置文件缺失（github令牌.txt 或 用户名.txt）');
+        throw new Error('配置文件缺失（glp.txt 或 用户名.txt）');
       }
 
       var lines1 = String(tokenText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       var rawToken = (lines1[0] || '').replace(/^\uFEFF/, '').trim();
-      if (!rawToken) throw new Error('github令牌.txt 为空');
+      if (!rawToken) throw new Error('glp.txt 为空');
       var token = /^github_pat_/.test(rawToken) ? rawToken : ('github_pat_' + rawToken);
 
       var lines2 = String(nameText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
@@ -1223,7 +1286,6 @@
     }
     if (!records.length) throw new Error('没有解析到任何学生记录。');
 
-    // 若原始文件没有排名列，按总分从高到低自动排名（并列同名次，后续跳号）
     if (col.rank === -1) {
       var ranked = records.filter(function (r) { return r.absent === ''; });
       ranked.sort(function (a, b) { return b.total - a.total; });
@@ -1235,7 +1297,6 @@
       records.forEach(function (r) { if (r.absent !== '') r.rank = ''; });
     }
 
-    /* 按排名升序排序；缺考或无效排名放到最后 */
     function rankValue(rec) {
       var r = String(rec.rank || '').trim();
       if (!r || r === '0') return Number.POSITIVE_INFINITY;
@@ -1246,7 +1307,6 @@
       var ra = rankValue(a);
       var rb = rankValue(b);
       if (ra !== rb) return ra - rb;
-      // 排名相同时按总分从高到低
       return b.total - a.total;
     });
 
@@ -1276,7 +1336,6 @@
       catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return; }
       activateSheet(sheet, got.fileName);
     }).catch(function (err) {
-      // 统一的“未找到”提示
       if (err && err.code === 'NOT_FOUND') {
         setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
       } else if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
@@ -1463,7 +1522,6 @@
       head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人（按排名排序）</span>';
       classListWrap.appendChild(head);
       var grid = document.createElement('div'); grid.className = 'stu-list';
-      // 已按排名排序（buildSheet 保证）
       list.forEach(function (rec) {
         var el = document.createElement('div'); el.className = 'stu';
         var rankTxt = (rec.rank && rec.rank !== '0') ? rec.rank : '—';
@@ -1549,13 +1607,12 @@
       setMsg(searchMsg, state.adminMode ? '未找到包含“' + key + '”的学生。' : '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
       return;
     }
-    // 结果已按排名排序（buildSheet 保证）
     setMsg(searchMsg, '找到 ' + list.length + ' 条记录（按排名排序）：', 'info');
     list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
   }
 
   /* =========================================================
-     路由 & 趋势视图
+     路由
      ========================================================= */
 
   function applyRoute() {
@@ -1566,7 +1623,13 @@
     mainView.hidden = isTrend || isLogs;
     trendView.hidden = !isTrend;
     adminLogsView.hidden = !isLogs;
-    if (isTrend) { renderTrendTOC(); window.scrollTo(0, 0); }
+    if (isTrend) {
+      renderTrendTOC();
+      if (state.trendPoints && state.trendPoints.length && !trendResultPanel.hidden) {
+        scheduleRedraw();
+      }
+      window.scrollTo(0, 0);
+    }
     if (isLogs) { loadAdminLogs(); window.scrollTo(0, 0); }
   }
   window.addEventListener('hashchange', applyRoute);
@@ -1738,7 +1801,7 @@
     });
     var fuzzy = state.adminMode, results = [], errors = [], idx = 0;
     function next() {
-      if (idx >= selected.length) { finishTrendQuery(results, errors); return; }
+      if (idx >= selected.length) { finishTrendQuery(results, errors, name); return; }
       var sid = selected[idx];
       var entry = entriesMap[sid] || parseSheetId(sid);
       updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
@@ -1757,7 +1820,7 @@
     next();
   }
 
-  function finishTrendQuery(results, errors) {
+  function finishTrendQuery(results, errors, studentName) {
     trendStartBtn.disabled = false; trendStartBtn.textContent = '开始查询';
     if (!results.length) {
       progressPanel.hidden = true; trendResultPanel.hidden = true;
@@ -1771,57 +1834,383 @@
     valid.sort(function (a, b) { return a.date.localeCompare(b.date) || a.id.localeCompare(b.id); });
     progressPanel.hidden = true; trendResultPanel.hidden = false;
     state.trendPoints = valid;
-    requestAnimationFrame(function () { drawChart(valid); renderTrendStats(valid, errors); });
+    state.chartStudentName = studentName || '';
+    state.chartView = { start: 0, end: valid.length - 1 };
+
+    updateChartTitle();
+    updateRangeInfo();
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        drawChart();
+        renderTrendStats(valid, errors);
+      });
+    });
   }
 
-  function drawChart(points) {
-    var canvas = trendChart, wrap = canvas.parentNode;
-    var cssW = Math.max(320, wrap.clientWidth - 8), cssH = 340;
+  function updateChartTitle() {
+    var pts = state.trendPoints || [];
+    var name = state.chartStudentName || '';
+    if (!pts.length) {
+      chartTitle.firstChild.nodeValue = '—';
+      chartSub.textContent = '';
+      return;
+    }
+    var cls = pts[0].cls || '';
+    chartTitle.firstChild.nodeValue = (name ? name : '该学生') + ' 的成绩趋势';
+    var subParts = [];
+    if (cls) subParts.push(cls);
+    subParts.push('共 ' + pts.length + ' 次有效考试');
+    chartSub.textContent = subParts.join(' · ');
+  }
+
+  function updateRangeInfo() {
+    var pts = state.trendPoints || [];
+    if (!pts.length) { rangeInfo.textContent = ''; return; }
+    var v = state.chartView;
+    var shown = v.end - v.start + 1;
+    rangeInfo.textContent = '显示 ' + shown + ' / ' + pts.length + ' 次';
+  }
+
+  /* =========================================================
+     Canvas 尺寸与绘制
+     ========================================================= */
+
+  function computeCanvasSize() {
+    var wrap = chartWrap;
+    if (!wrap) return { w: 300, h: 260 };
+    var rect = wrap.getBoundingClientRect();
+    var paddingL = 4, paddingR = 4;
+    var availW = Math.max(0, rect.width - paddingL - paddingR);
+    if (!availW) availW = Math.max(280, document.documentElement.clientWidth - 60);
+    availW = Math.max(240, availW);
+
+    var viewportW = document.documentElement.clientWidth || window.innerWidth || 360;
+    var h;
+    if (viewportW < 420) h = 240;
+    else if (viewportW < 640) h = 280;
+    else h = 340;
+    return { w: Math.round(availW), h: Math.round(h) };
+  }
+
+  function setupCanvasSize() {
+    var canvas = trendChart;
+    var size = computeCanvasSize();
     var dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
-    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(size.w * dpr);
+    canvas.height = Math.round(size.h * dpr);
+    canvas.style.width = size.w + 'px';
+    canvas.style.height = size.h + 'px';
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cssW, cssH);
-    var padL = 46, padR = 22, padT = 26, padB = 62;
-    var plotW = cssW - padL - padR, plotH = cssH - padT - padB;
-    var scores = points.map(function (p) { return p.total; });
-    var dMin = Math.min.apply(null, scores), dMax = Math.max.apply(null, scores);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: size.w, h: size.h };
+  }
+
+  function drawChart() {
+    var points = state.trendPoints || [];
+    if (!points.length) return;
+    if (trendResultPanel.hidden) return;
+
+    var setup = setupCanvasSize();
+    var ctx = setup.ctx, cssW = setup.w, cssH = setup.h;
+
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    var padL = 46, padR = 22, padT = 22, padB = 58;
+    if (cssW < 400) { padL = 40; padR = 14; padB = 54; }
+
+    var plotW = Math.max(40, cssW - padL - padR);
+    var plotH = Math.max(40, cssH - padT - padB);
+
+    var v = state.chartView;
+    var start = Math.max(0, Math.min(points.length - 1, v.start));
+    var end = Math.max(start, Math.min(points.length - 1, v.end));
+    var viewPoints = points.slice(start, end + 1);
+
+    var allScores = points.map(function (p) { return p.total; });
+    var dMin = Math.min.apply(null, allScores);
+    var dMax = Math.max.apply(null, allScores);
     var pad = Math.max(5, (dMax - dMin) * 0.2);
-    var yMin = Math.max(0, Math.floor(dMin - pad)), yMax = Math.ceil(dMax + pad);
+    var yMin = Math.max(0, Math.floor(dMin - pad));
+    var yMax = Math.ceil(dMax + pad);
     if (yMin === yMax) { yMin = Math.max(0, yMin - 5); yMax += 5; }
-    function xPos(i) { return points.length === 1 ? padL + plotW / 2 : padL + (i / (points.length - 1)) * plotW; }
-    function yPos(v) { return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
-    ctx.strokeStyle = '#e4e9f2'; ctx.lineWidth = 1;
+
+    function xPos(i) {
+      var n = viewPoints.length;
+      if (n === 1) return padL + plotW / 2;
+      return padL + (i / (n - 1)) * plotW;
+    }
+    function yPos(val) {
+      return padT + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+    }
+
+    ctx.strokeStyle = '#e4e9f2';
+    ctx.lineWidth = 1;
+    ctx.font = (cssW < 400 ? '10px' : '11px') + ' -apple-system, "PingFang SC", sans-serif';
     var ySteps = 5;
     for (var i = 0; i <= ySteps; i++) {
-      var v = yMin + (yMax - yMin) * i / ySteps, y = yPos(v);
+      var vv = yMin + (yMax - yMin) * i / ySteps;
+      var y = yPos(vv);
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
-      ctx.fillStyle = '#8b95a7'; ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+      ctx.fillStyle = '#8b95a7';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(Math.round(v)), padL - 6, y);
+      ctx.fillText(String(Math.round(vv)), padL - 6, y);
     }
-    ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = '#3b6cf6';
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    points.forEach(function (p, i) { var x = xPos(i), y = yPos(p.total); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
-    ctx.stroke();
-    points.forEach(function (p, i) {
+    viewPoints.forEach(function (p, i) {
       var x = xPos(i), y = yPos(p.total);
-      ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.4; ctx.stroke();
-      ctx.fillStyle = '#1f2937'; ctx.font = 'bold 11.5px -apple-system, "PingFang SC", sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillText(String(Math.round(p.total)), x, y - 8);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
-    var labelStep = points.length > 12 ? Math.ceil(points.length / 9) : 1;
-    points.forEach(function (p, i) {
-      if (i % labelStep !== 0 && i !== points.length - 1) return;
+    ctx.stroke();
+
+    var showLabel = viewPoints.length <= 20;
+    var dotR = viewPoints.length > 20 ? 3.5 : 4.5;
+    viewPoints.forEach(function (p, i) {
+      var x = xPos(i), y = yPos(p.total);
+      ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.2; ctx.stroke();
+
+      if (showLabel) {
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold ' + (cssW < 400 ? '10.5px' : '11.5px') + ' -apple-system, "PingFang SC", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(String(Math.round(p.total)), x, y - 7);
+      }
+    });
+
+    var labelStep = viewPoints.length > 12 ? Math.ceil(viewPoints.length / 8) : 1;
+    var angle = -Math.PI / 5;
+    var lx = cssW < 400 ? 10 : 10.5;
+    viewPoints.forEach(function (p, i) {
+      if (i % labelStep !== 0 && i !== viewPoints.length - 1) return;
       var x = xPos(i);
-      ctx.save(); ctx.translate(x, padT + plotH + 10); ctx.rotate(-Math.PI / 5);
-      ctx.fillStyle = '#8b95a7'; ctx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-      ctx.fillText(p.label, 0, 0); ctx.restore();
+      ctx.save();
+      ctx.translate(x, padT + plotH + 8);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#8b95a7';
+      ctx.font = lx + 'px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(p.label, 0, 0);
+      ctx.restore();
     });
   }
+
+  var redrawPending = false;
+  function scheduleRedraw() {
+    if (redrawPending) return;
+    redrawPending = true;
+    requestAnimationFrame(function () {
+      redrawPending = false;
+      drawChart();
+    });
+  }
+
+  /* =========================================================
+     折线图缩放
+     ========================================================= */
+
+  function zoomChart(direction) {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    var v = state.chartView;
+    var len = v.end - v.start + 1;
+    if (len <= 0) return;
+
+    var newLen;
+    if (direction > 0) {
+      newLen = Math.max(2, Math.floor(len * 0.7));
+    } else {
+      newLen = Math.min(pts.length, Math.ceil(len / 0.7) + 1);
+    }
+    if (newLen === len) return;
+
+    var center = (v.start + v.end) / 2;
+    var newStart = Math.round(center - newLen / 2);
+    var newEnd = newStart + newLen - 1;
+    if (newStart < 0) { newStart = 0; newEnd = newStart + newLen - 1; }
+    if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - newLen + 1); }
+
+    state.chartView = { start: newStart, end: newEnd };
+    updateRangeInfo();
+    drawChart();
+  }
+
+  function resetZoom() {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    state.chartView = { start: 0, end: pts.length - 1 };
+    updateRangeInfo();
+    drawChart();
+  }
+
+  zoomInBtn.addEventListener('click', function () { zoomChart(1); });
+  zoomOutBtn.addEventListener('click', function () { zoomChart(-1); });
+  zoomResetBtn.addEventListener('click', resetZoom);
+
+  /* =========================================================
+     触摸手势
+     ========================================================= */
+
+  var gesture = {
+    mode: null,
+    startX: 0,
+    startView: null,
+    startDist: 0,
+    startCenterX: 0,
+    startIndex: 0,
+    startTotal: 0
+  };
+
+  function getTouchDist(t1, t2) {
+    var dx = t1.clientX - t2.clientX;
+    var dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  trendChart.addEventListener('touchstart', function (e) {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    if (e.touches.length === 2) {
+      gesture.mode = 'zoom';
+      gesture.startDist = getTouchDist(e.touches[0], e.touches[1]);
+      gesture.startView = { start: state.chartView.start, end: state.chartView.end };
+      gesture.startCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      gesture.startIndex = state.chartView.start;
+      gesture.startTotal = pts.length;
+    } else if (e.touches.length === 1) {
+      gesture.mode = 'pan';
+      gesture.startX = e.touches[0].clientX;
+      gesture.startView = { start: state.chartView.start, end: state.chartView.end };
+    }
+  }, { passive: false });
+
+  trendChart.addEventListener('touchmove', function (e) {
+    var pts = state.trendPoints || [];
+    if (!pts.length || !gesture.mode || !gesture.startView) return;
+    e.preventDefault();
+
+    var v = state.chartView;
+    if (gesture.mode === 'zoom' && e.touches.length === 2) {
+      var dist = getTouchDist(e.touches[0], e.touches[1]);
+      if (gesture.startDist < 1) return;
+      var ratio = gesture.startDist / dist;
+      var origLen = gesture.startView.end - gesture.startView.start + 1;
+      var newLen = Math.round(origLen * ratio);
+      newLen = Math.max(2, Math.min(pts.length, newLen));
+
+      var origCenter = (gesture.startView.start + gesture.startView.end) / 2;
+      var newStart = Math.round(origCenter - newLen / 2);
+      var newEnd = newStart + newLen - 1;
+      if (newStart < 0) { newStart = 0; newEnd = newStart + newLen - 1; }
+      if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - newLen + 1); }
+      v.start = newStart; v.end = newEnd;
+      updateRangeInfo();
+      scheduleRedraw();
+
+    } else if (gesture.mode === 'pan' && e.touches.length === 1) {
+      var dx = e.touches[0].clientX - gesture.startX;
+      var size = computeCanvasSize();
+      var padL = 46, padR = 22;
+      if (size.w < 400) { padL = 40; padR = 14; }
+      var plotW = Math.max(40, size.w - padL - padR);
+      var origLen = gesture.startView.end - gesture.startView.start + 1;
+      if (origLen >= pts.length) return;
+      var step = plotW / Math.max(1, origLen - 1);
+      var offsetIndex = Math.round(-dx / step);
+
+      var newStart = gesture.startView.start + offsetIndex;
+      var newEnd = gesture.startView.end + offsetIndex;
+      if (newStart < 0) { newStart = 0; newEnd = origLen - 1; }
+      if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - origLen + 1); }
+      v.start = newStart; v.end = newEnd;
+      updateRangeInfo();
+      scheduleRedraw();
+    }
+  }, { passive: false });
+
+  function endGesture() {
+    gesture.mode = null;
+    gesture.startView = null;
+    gesture.startDist = 0;
+  }
+  trendChart.addEventListener('touchend', endGesture);
+  trendChart.addEventListener('touchcancel', endGesture);
+
+  trendChart.addEventListener('wheel', function (e) {
+    if (!state.trendPoints || !state.trendPoints.length) return;
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    if (e.deltaY < 0) zoomChart(1);
+    else zoomChart(-1);
+  }, { passive: false });
+
+  var mouseDrag = { active: false, startX: 0, startView: null };
+  trendChart.addEventListener('mousedown', function (e) {
+    if (!state.trendPoints || !state.trendPoints.length) return;
+    mouseDrag.active = true;
+    mouseDrag.startX = e.clientX;
+    mouseDrag.startView = { start: state.chartView.start, end: state.chartView.end };
+    trendChart.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!mouseDrag.active || !mouseDrag.startView) return;
+    var pts = state.trendPoints || [];
+    var origLen = mouseDrag.startView.end - mouseDrag.startView.start + 1;
+    if (origLen >= pts.length) return;
+    var dx = e.clientX - mouseDrag.startX;
+    var size = computeCanvasSize();
+    var padL = 46, padR = 22;
+    if (size.w < 400) { padL = 40; padR = 14; }
+    var plotW = Math.max(40, size.w - padL - padR);
+    var step = plotW / Math.max(1, origLen - 1);
+    var offsetIndex = Math.round(-dx / step);
+    var newStart = mouseDrag.startView.start + offsetIndex;
+    var newEnd = mouseDrag.startView.end + offsetIndex;
+    if (newStart < 0) { newStart = 0; newEnd = origLen - 1; }
+    if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - origLen + 1); }
+    state.chartView.start = newStart;
+    state.chartView.end = newEnd;
+    updateRangeInfo();
+    scheduleRedraw();
+  });
+  window.addEventListener('mouseup', function () {
+    if (mouseDrag.active) {
+      mouseDrag.active = false;
+      mouseDrag.startView = null;
+      trendChart.style.cursor = '';
+    }
+  });
+
+  /* =========================================================
+     尺寸自适应
+     ========================================================= */
+
+  function observeChartResize() {
+    var cb = function () {
+      if (!state.trendPoints || !state.trendPoints.length) return;
+      if (trendResultPanel.hidden) return;
+      scheduleRedraw();
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+      var ro = new ResizeObserver(cb);
+      ro.observe(chartWrap);
+    }
+    window.addEventListener('resize', cb);
+    window.addEventListener('orientationchange', function () {
+      setTimeout(cb, 250);
+    });
+  }
+
+  /* =========================================================
+     统计与文字描述
+     ========================================================= */
 
   function renderTrendStats(points, errors) {
     var n = points.length;
@@ -1874,16 +2263,6 @@
     }
     trendSummary.innerHTML = text;
   }
-
-  var resizeTimer = null;
-  window.addEventListener('resize', function () {
-    if (!state.trendPoints || !state.trendPoints.length) return;
-    if (trendResultPanel.hidden) return;
-    if (resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () {
-      if (state.trendPoints && state.trendPoints.length) drawChart(state.trendPoints);
-    }, 120);
-  });
 
   /* =========================================================
      事件绑定
@@ -1951,6 +2330,7 @@
      启动
      ========================================================= */
 
+  observeChartResize();
   loadNotice();
   loadTOC();
   loadIdName();
