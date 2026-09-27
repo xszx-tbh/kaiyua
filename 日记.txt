@@ -1,29 +1,6 @@
 {
-  "count": 50,
+  "count": 51,
   "entries": [
-    {
-      "localTime": "Sun Sep 27 2026 10:10:47 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-09-27T02:10:47.735Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 10; HarmonyOS; JSN-AL00a; HMSCore 6.16.4.352) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.79 HuaweiBrowser/17.0.8.310 Mobile Safari/537.36",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 4,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "320x694",
-      "availScreen": "320x694",
-      "colorDepth": 24,
-      "pixelRatio": 3.375,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/#",
-      "referrer": ""
-    },
     {
       "localTime": "Sun Sep 27 2026 10:15:58 GMT+0800 (中国标准时间)",
       "timestamp": "2026-09-27T02:15:58.447Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": "https://weixin110.qq.com/"
+    },
+    {
+      "localTime": "Sun Sep 27 2026 15:02:23 GMT+0000 (Coordinated Universal Time)",
+      "timestamp": "2026-09-27T15:02:23.328Z",
+      "ip": "149.57.180.188",
+      "userAgent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "language": "en-US",
+      "languages": "en-US,en",
+      "platform": "Win32",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 1,
+      "deviceMemory": 4,
+      "maxTouchPoints": 0,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "1600x1200",
+      "availScreen": "1600x1200",
+      "colorDepth": 24,
+      "pixelRatio": 1,
+      "timezone": "UTC",
+      "timezoneOffset": 0,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": ""
     }
   ]
 }
