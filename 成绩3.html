@@ -1325,7 +1325,7 @@
 
   /* =========================================================
      构建成绩单（含自动排名 + 按排名排序）
-     ★ 本次修改：动态推导满分，不依赖固定 120 分
+     ★ 动态推导满分，不依赖固定 120 分
      ========================================================= */
 
   function buildSheet(rows) {
@@ -1395,7 +1395,6 @@
     });
 
     /* ---------- 动态推导本次考试总分满分 ----------
-       ★ 换一种方式：不再假设 120 分，按数据实际情况计算
        1) 优先用「各题满分之和」（最准确）
        2) 若各题满分不可用，或明显小于实际最高分（数据缺题/加题），
           则退化为「本次实际最高分」
@@ -2589,18 +2588,20 @@
 
   /* =========================================================
      统计与文字描述
+     ★ 修复：最低分取 points[minIdx] 而不是 points[minV]
      ========================================================= */
 
   function renderTrendStats(points, errors) {
     var n = points.length;
     var scores = points.map(function (p) { return p.total; });
     var sum = scores.reduce(function (a, b) { return a + b; }, 0);
-    var avg = sum / n;
-    var maxV = Math.max.apply(null, scores), minV = Math.min.apply(null, scores);
+    var avg = n ? sum / n : 0;
+    var maxV = scores.length ? Math.max.apply(null, scores) : 0;
+    var minV = scores.length ? Math.min.apply(null, scores) : 0;
     var maxIdx = scores.indexOf(maxV), minIdx = scores.indexOf(minV);
     var variance = 0;
     for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
-    variance /= n;
+    variance = n ? variance / n : 0;
     var std = Math.sqrt(variance);
     var slope = 0;
     if (n > 1) {
@@ -2633,8 +2634,16 @@
     var parts = [];
     parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
     parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
-    parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
-    parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minV].fullLabel + '）');
+    if (maxIdx >= 0 && points[maxIdx]) {
+      parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
+    } else {
+      parts.push('最高：<b>' + fmt(maxV) + '</b> 分');
+    }
+    if (minIdx >= 0 && points[minIdx]) {
+      parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
+    } else {
+      parts.push('最低：<b>' + fmt(minV) + '</b> 分');
+    }
     var text = parts.join('　·　');
     if (errors && errors.length) {
       text += '<br><span style="color:#8b95a7;font-size:12.5px;">另有 ' + errors.length +
