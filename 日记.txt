@@ -1,29 +1,6 @@
 {
-  "count": 54,
+  "count": 55,
   "entries": [
-    {
-      "localTime": "Sun Sep 27 2026 10:23:23 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-09-27T02:23:23.546Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 10; HarmonyOS; JSN-AL00a; HMSCore 6.16.4.352) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.79 HuaweiBrowser/17.0.8.310 Mobile Safari/537.36",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 4,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "320x694",
-      "availScreen": "320x694",
-      "colorDepth": 24,
-      "pixelRatio": 3.375,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/#",
-      "referrer": ""
-    },
     {
       "localTime": "Sun Sep 27 2026 10:23:29 GMT+0800 (中国标准时间)",
       "timestamp": "2026-09-27T02:23:29.744Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
+    },
+    {
+      "localTime": "Wed Sep 30 2026 16:24:39 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-09-30T08:24:39.060Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.78(0x18004e32) NetType/WIFI Language/zh_CN",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "393x852",
+      "availScreen": "393x852",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
