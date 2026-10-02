@@ -1,29 +1,6 @@
 {
-  "count": 77,
+  "count": 78,
   "entries": [
-    {
-      "localTime": "Wed Sep 30 2026 19:18:34 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-09-30T11:18:34.986Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.78(0x18004e32) NetType/WIFI Language/zh_CN",
-      "language": "zh-CN",
-      "languages": "zh-CN",
-      "platform": "iPhone",
-      "vendor": "Apple Computer, Inc.",
-      "hardwareConcurrency": 4,
-      "deviceMemory": null,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "402x874",
-      "availScreen": "402x874",
-      "colorDepth": 24,
-      "pixelRatio": 3,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Wed Sep 30 2026 20:00:37 GMT+0800 (中国标准时间)",
       "timestamp": "2026-09-30T12:00:37.249Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/#",
       "referrer": ""
+    },
+    {
+      "localTime": "Fri Oct 02 2026 16:33:21 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-02T08:33:21.354Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.78(0x18004e33) NetType/4G Language/zh_CN",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "402x874",
+      "availScreen": "402x874",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
