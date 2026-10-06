@@ -1,29 +1,6 @@
 {
-  "count": 109,
+  "count": 110,
   "entries": [
-    {
-      "localTime": "Sat Oct 03 2026 19:06:44 GMT+0800 (香港标准时间)",
-      "timestamp": "2026-10-03T11:06:44.239Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.78(0x18004e33) NetType/4G Language/zh_CN",
-      "language": "zh-CN",
-      "languages": "zh-CN",
-      "platform": "iPhone",
-      "vendor": "Apple Computer, Inc.",
-      "hardwareConcurrency": 4,
-      "deviceMemory": null,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "440x956",
-      "availScreen": "440x956",
-      "colorDepth": 24,
-      "pixelRatio": 3,
-      "timezone": "Asia/Hong_Kong",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Sat Oct 03 2026 19:14:27 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-03T11:14:27.067Z",
@@ -459,6 +436,29 @@
       "timezone": "Asia/Shanghai",
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/index2#",
+      "referrer": ""
+    },
+    {
+      "localTime": "Tue Oct 06 2026 18:15:24 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-06T10:15:24.315Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 EdgA/138.0.0.0",
+      "language": "zh-CN",
+      "languages": "zh-CN,zh",
+      "platform": "Linux armv81",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 4,
+      "maxTouchPoints": 2,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "960x600",
+      "availScreen": "960x600",
+      "colorDepth": 24,
+      "pixelRatio": 1.9389615058898926,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
     }
   ]
