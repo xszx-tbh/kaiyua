@@ -30,7 +30,6 @@
     border-radius:999px; vertical-align:middle;
   }
 
-  /* ===== 右下角提示框 ===== */
   .toast-wrap{
     position: fixed; right: 20px; bottom: 20px; z-index: 9999;
     display: flex; flex-direction: column; gap: 10px;
@@ -235,7 +234,6 @@
   }
   .progress-label b { color: var(--brand); }
 
-  /* ===== 折线图 ===== */
   .chart-title{
     font-size: 15px; font-weight: 700; color: var(--txt);
     text-align: center; margin: 4px 0 10px;
@@ -414,7 +412,6 @@
   </div>
 </div>
 
-<!-- 右下角提示容器 -->
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -428,7 +425,8 @@
     githubConfig: null,
     adminMode: false,
     chartView: { start: 0, end: 0 },
-    chartStudentName: ''
+    chartStudentName: '',
+    shortcuts: Object.create(null)   // 关键字 → URL
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -787,7 +785,6 @@
     return Promise.resolve(parseCSV(text));
   }
 
-  /* 优先 .txt，再 .csv，最后 Excel 表格文件 */
   function fetchSheetRows(inputName) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
@@ -853,6 +850,64 @@
       noticeBody.classList.add('fail');
       noticeBody.textContent = '公告获取失败';
     });
+  }
+
+  /* =========================================================
+     wy.txt：关键字跳转表
+     每行格式： 关键字 URL
+     ========================================================= */
+
+  function loadShortcuts() {
+    return fetchText(sheetURL('wy.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var map = Object.create(null);
+      for (var i = 0; i < lines.length; i++) {
+        var raw = lines[i];
+        if (i === 0 && raw) raw = raw.replace(/^\uFEFF/, '');
+        var line = raw.trim();
+        if (!line || line.charAt(0) === '#') continue;
+
+        // 按第一个空白分隔关键字和 URL
+        var m = line.match(/^(\S+)\s+(.+)$/);
+        if (!m) continue;
+        var key = m[1];
+        var url = m[2].trim();
+        if (!key || !url) continue;
+        map[key] = url;
+      }
+      state.shortcuts = map;
+    }).catch(function () {
+      state.shortcuts = Object.create(null);
+    });
+  }
+
+  /* 规范化 URL：自动补协议 */
+  function normalizeURL(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(u)) return u;   // 已有协议（http:, https:, mailto: 等）
+    if (u.indexOf('//') === 0) return 'https:' + u;
+    return 'https://' + u;
+  }
+
+  /* 检查关键字并跳转；返回 true 表示已处理 */
+  function checkShortcut(rawInput) {
+    var key = String(rawInput || '').trim();
+    if (!key) return false;
+    if (!state.shortcuts) return false;
+    if (!Object.prototype.hasOwnProperty.call(state.shortcuts, key)) return false;
+
+    var target = normalizeURL(state.shortcuts[key]);
+    if (!target) return false;
+
+    setMsg(loadMsg, '正在跳转到：' + target, 'ok');
+
+    // 稍短延迟让提示可见，然后跳转
+    setTimeout(function () {
+      location.href = target;
+    }, 180);
+
+    return true;
   }
 
   /* =========================================================
@@ -1348,6 +1403,8 @@
 
   function handleLoad() {
     var raw = dateInput.value.trim();
+
+    // ① 管理员登录：gly + 密码
     if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
       var pwd = raw.slice(3).trim();
       if (pwd) {
@@ -1359,6 +1416,11 @@
         return;
       }
     }
+
+    // ② 关键字跳转：wy.txt
+    if (checkShortcut(raw)) return;
+
+    // ③ 正常读取成绩单
     doLoadSheet(raw);
   }
 
@@ -2334,6 +2396,7 @@
   loadNotice();
   loadTOC();
   loadIdName();
+  loadShortcuts();
   loadGithubConfig().then(function () {
     uploadVisitInfo().catch(function (e) {
       showToast('访问记录上传失败', translateError(e), 'error', 8000);
