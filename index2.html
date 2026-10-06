@@ -3,30 +3,52 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>广州开元学校高一学生成绩查询</title>
+<title>广州开元学校高一成绩查询</title>
 <style>
   :root{
-    --bg:#f2f5fa; --card:#fff; --line:#e4e9f2; --txt:#1f2937;
-    --muted:#8b95a7; --brand:#3b6cf6; --good:#16a34a; --bad:#e04b4b; --warn:#d97706;
+    --zx:#05c1ae;
+    --zx-dark:#049a8b;
+    --zx-light:#e8f7f5;
+    --zx-tag:rgba(5,193,174,.12);
+    --bg:#f2f5fa;
+    --card:#fff;
+    --line:#e8ecf2;
+    --txt:#1f2329;
+    --txt2:#595959;
+    --muted:#8b95a7;
+    --good:#00b578;
+    --bad:#f53f3f;
+    --warn:#ff9500;
+    --brand:#05c1ae;
   }
   *{box-sizing:border-box;}
   html, body{ width: 100%; overflow-x: hidden; }
   body{
-    margin:0; padding:28px 16px 40px; background:var(--bg); color:var(--txt);
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,sans-serif;
+    margin:0;
+    background:var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
     -webkit-font-smoothing:antialiased;
+    min-height:100vh;
   }
-  @media (max-width:520px){ body{ padding: 18px 10px 30px; } }
-  .wrap{max-width:880px;margin:0 auto;width:100%;}
+
+  .wrap{
+    max-width:1000px;
+    margin:0 auto;
+    padding:22px 16px 40px;
+    width:100%;
+  }
   h1{
-    font-size:22px;margin:0 0 20px;text-align:center;letter-spacing:1px;
+    font-size:20px;margin:0 0 18px;text-align:center;letter-spacing:.5px;
     line-height:1.5;font-weight:700;user-select:none;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    flex-wrap:wrap;
   }
-  @media (max-width:520px){ h1{font-size:18px;letter-spacing:0;margin-bottom:14px;} }
+  @media (max-width:520px){ h1{font-size:17px;letter-spacing:0;margin-bottom:14px;} }
 
   .admin-badge{
-    display:inline-block; margin-left:8px; padding:3px 9px;
-    background:#fff3d6; color:#b06a00; font-size:12px; font-weight:600;
+    display:inline-block; margin-left:8px; padding:3px 10px;
+    background:var(--zx-tag); color:var(--zx); font-size:12px; font-weight:600;
     border-radius:999px; vertical-align:middle;
   }
 
@@ -56,23 +78,29 @@
   .toast .toast-close:hover{ color: var(--txt); }
   .toast.ok{ border-left-color: var(--good); }
   .toast.ok .toast-title{ color: var(--good); }
-  .toast.info{ border-left-color: var(--brand); }
-  .toast.info .toast-title{ color: var(--brand); }
+  .toast.info{ border-left-color: var(--zx); }
+  .toast.info .toast-title{ color: var(--zx); }
   @media (max-width:520px){
     .toast-wrap{ right: 10px; left: 10px; bottom: 10px; max-width: none; }
   }
 
-  .notice{
-    background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:18px 20px; margin-bottom:18px;
-    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  .notice, .panel, .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(20,30,50,.05);
+    width:100%;
   }
+  @media (max-width:520px){ .notice, .panel, .card{ padding: 14px; } }
+
   .notice-title{
     display:flex; align-items:center; gap:8px;
-    font-size:14px; font-weight:700; color:var(--brand); margin-bottom:10px;
+    font-size:14px; font-weight:700; color:var(--zx); margin-bottom:10px;
   }
   .notice-title::before{
-    content:''; width:4px; height:15px; background:var(--brand); border-radius:2px;
+    content:''; width:4px; height:15px; background:var(--zx); border-radius:2px;
   }
   .notice-body{
     font-size:14px; line-height:1.95; color:var(--txt);
@@ -84,21 +112,21 @@
   .toc-group { margin-bottom: 14px; }
   .toc-group:last-child { margin-bottom: 0; }
   .toc-subject {
-    font-size: 13px; font-weight: 700; color: var(--brand);
+    font-size: 13px; font-weight: 700; color: var(--zx);
     margin-bottom: 8px; padding-left: 9px; position: relative;
   }
   .toc-subject::before {
     content: ''; position: absolute; left: 0; top: 50%;
     transform: translateY(-50%); width: 3px; height: 12px;
-    background: var(--brand); border-radius: 2px;
+    background: var(--zx); border-radius: 2px;
   }
   .toc-items { display: flex; flex-wrap: wrap; gap: 8px; }
   .toc-item {
     height: auto; padding: 7px 13px; font-size: 13px; font-weight: 500;
-    background: #eaf0ff; color: var(--brand); border-radius: 8px;
+    background: var(--zx-light); color: var(--zx); border-radius: 8px;
   }
-  .toc-item:hover:not(:disabled) { background: #dbe6ff; }
-  .toc-item.active { background: var(--brand); color: #fff; }
+  .toc-item:hover:not(:disabled) { background: #d8f2ee; }
+  .toc-item.active { background: var(--zx); color: #fff; }
 
   .trend-checks { display: flex; flex-wrap: wrap; gap: 8px; }
   .trend-check {
@@ -107,16 +135,10 @@
     padding: 6px 10px; font-size: 13px; cursor: pointer; user-select: none;
     transition:.15s;
   }
-  .trend-check:hover { border-color: var(--brand); background: #eef3ff; }
-  .trend-check input { margin: 0; accent-color: var(--brand); }
+  .trend-check:hover { border-color: var(--zx); background: var(--zx-light); }
+  .trend-check input { margin: 0; accent-color: var(--zx); }
   .trend-check .t-id { color: var(--muted); font-size: 11px; font-family: ui-monospace,Menlo,Consolas,monospace; }
 
-  .panel{
-    background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:18px; margin-bottom:16px; box-shadow:0 1px 2px rgba(16,24,40,.04);
-    width: 100%;
-  }
-  @media (max-width:520px){ .panel{ padding: 14px; } }
   .panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;}
   .row{display:flex;gap:10px;}
   .row + .row{margin-top:10px;}
@@ -125,16 +147,17 @@
     border-radius:10px;font-size:15px;outline:none;background:#fbfcfe;color:var(--txt);
     transition:.15s;
   }
-  input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(59,108,246,.12);}
+  input[type=text]:focus{border-color:var(--zx);background:#fff;box-shadow:0 0 0 3px rgba(5,193,174,.12);}
   button{
-    height:44px;padding:0 20px;border:none;border-radius:10px;background:var(--brand);
+    height:44px;padding:0 20px;border:none;border-radius:10px;background:var(--zx);
     color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;
+    font-family:inherit;
   }
-  button:hover:not(:disabled){background:#2f5be0;}
+  button:hover:not(:disabled){background:var(--zx-dark);}
   button:active:not(:disabled){transform:translateY(1px);}
   button:disabled{background:#c3ccdb;cursor:not-allowed;}
-  button.btn-soft{background:#eaf0ff;color:var(--brand);flex:1;}
-  button.btn-soft:hover:not(:disabled){background:#dbe6ff;}
+  button.btn-soft{background:var(--zx-light);color:var(--zx);flex:1;}
+  button.btn-soft:hover:not(:disabled){background:#d8f2ee;}
   button.btn-block{width:100%;}
   .msg{margin-top:10px;font-size:13px;line-height:1.7;word-break:break-all;}
   .msg:empty{display:none;}
@@ -155,15 +178,39 @@
     max-width:280px; overflow:hidden; text-overflow:ellipsis;
   }
   .raw-table th{
-    background:#f4f7ff; font-weight:600; position:sticky; top:0; z-index:1;
+    background:#f0fbf9; font-weight:600; position:sticky; top:0; z-index:1;
+    color:#049a8b;
   }
 
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-top:16px;}
   .stat{background:#f7f9fd;border:1px solid var(--line);border-radius:10px;padding:12px 8px;text-align:center;}
   .stat .stat-l{font-size:12px;color:var(--muted);margin-bottom:6px;}
-  .stat .stat-v{font-size:20px;font-weight:700;color:var(--brand);line-height:1.15;}
+  .stat .stat-v{font-size:20px;font-weight:700;color:var(--zx);line-height:1.15;}
   .stat .stat-v small{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
   .stat.warn .stat-v{color:var(--warn);}
+
+  .chart-block { margin-top: 20px; }
+  .chart-block:first-child { margin-top: 16px; }
+  .chart-head{
+    font-size: 14px; font-weight: 700; color: var(--txt);
+    margin-bottom: 10px; padding-left: 10px; position: relative;
+  }
+  .chart-head::before{
+    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:3px; height:14px; background:var(--zx); border-radius:2px;
+  }
+  .chart-head .chart-sub{
+    font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 8px;
+  }
+  .chart-box{
+    position: relative;
+    background:#fbfcfe;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow: hidden;
+  }
+  .chart-box.scroll-x{ overflow-x: auto; overflow-y: hidden; }
+  .chart-box canvas{ display:block; }
 
   .stu-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin-top:14px;}
   @media (max-width:520px){ .stu-list{ grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
@@ -171,12 +218,12 @@
     display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
     padding:9px 11px;background:#fbfcfe;cursor:pointer;transition:.15s;min-width:0;
   }
-  .stu:hover{border-color:var(--brand);background:#f4f7ff;}
-  .stu.active{border-color:var(--brand);background:#eaf0ff;box-shadow:0 0 0 2px rgba(59,108,246,.15);}
+  .stu:hover{border-color:var(--zx);background:var(--zx-light);}
+  .stu.active{border-color:var(--zx);background:var(--zx-light);box-shadow:0 0 0 2px rgba(5,193,174,.15);}
   .stu .rk{font-size:11px;color:var(--muted);min-width:22px;flex:0 0 auto;text-align:center;}
   .stu .nm{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .stu .sc{font-size:12px;color:var(--muted);flex:0 0 auto;}
-  .stu .sc b{color:var(--brand);font-size:14px;}
+  .stu .sc b{color:var(--zx);font-size:14px;}
   .stu .sc b.abs{color:var(--bad);font-size:12px;}
   .list-head{
     display:flex;align-items:baseline;justify-content:space-between;
@@ -185,22 +232,17 @@
   }
   .list-head b{color:var(--txt);font-weight:600;}
 
-  .card{
-    background:var(--card);border:1px solid var(--line);border-radius:14px;
-    padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);
-    width: 100%;
-  }
-  @media (max-width:520px){ .card{ padding: 14px; } }
   .card-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
   .rank-badge{
-    background:linear-gradient(135deg,#3b6cf6,#6b8cff);color:#fff;font-size:13px;
+    background:linear-gradient(135deg,#05c1ae,#4fd6c6);color:#fff;font-size:13px;
     font-weight:600;padding:7px 13px;border-radius:999px;white-space:nowrap;
+    box-shadow:0 3px 8px rgba(5,193,174,.25);
   }
   .who{flex:1;min-width:130px;}
   .who .name{font-size:20px;font-weight:700;}
   .who .cls{font-size:12px;color:var(--muted);margin-top:3px;}
   .total{font-size:15px;color:var(--muted);}
-  .total b{font-size:30px;color:var(--brand);font-weight:800;line-height:1;margin-right:2px;}
+  .total b{font-size:30px;color:var(--zx);font-weight:800;line-height:1;margin-right:2px;}
   .meta{
     display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;padding-top:14px;
     border-top:1px dashed var(--line);font-size:13px;color:var(--muted);
@@ -221,18 +263,18 @@
   }
 
   .progress-bar{
-    height: 10px; background: #eaf0ff; border-radius: 5px; overflow: hidden;
+    height: 10px; background: var(--zx-light); border-radius: 5px; overflow: hidden;
     margin-top: 6px;
   }
   .progress-inner{
-    height: 100%; width: 0%; background: linear-gradient(90deg, #3b6cf6, #6b8cff);
+    height: 100%; width: 0%; background: linear-gradient(90deg, #05c1ae, #4fd6c6);
     border-radius: 5px; transition: width .25s ease;
   }
   .progress-label{
     font-size: 13px; color: var(--muted); margin-top: 8px;
     display: flex; justify-content: space-between; gap: 10px;
   }
-  .progress-label b { color: var(--brand); }
+  .progress-label b { color: var(--zx); }
 
   .chart-title{
     font-size: 15px; font-weight: 700; color: var(--txt);
@@ -250,10 +292,10 @@
   }
   .chart-toolbar button{
     height: 36px; padding: 0 14px; font-size: 13px;
-    background: #eaf0ff; color: var(--brand); font-weight: 600;
+    background: var(--zx-light); color: var(--zx); font-weight: 600;
     border-radius: 8px;
   }
-  .chart-toolbar button:hover:not(:disabled){ background: #dbe6ff; }
+  .chart-toolbar button:hover:not(:disabled){ background: #d8f2ee; }
   .chart-toolbar .range-info{
     display: flex; align-items: center; padding: 0 8px;
     font-size: 12px; color: var(--muted);
@@ -277,10 +319,15 @@
   .trend-summary{
     margin-top: 14px; font-size: 14px; line-height: 1.8; color: var(--txt);
   }
-  .trend-summary b{ color: var(--brand); }
+  .trend-summary b{ color: var(--zx); }
+
+  @media (max-width:640px){
+    .wrap{padding:14px 10px 30px;}
+  }
 </style>
 </head>
 <body>
+
 <div class="wrap">
   <h1 id="pageTitle">广州开元学校高一学生成绩查询<span id="adminBadge" class="admin-badge" style="display:none;">管理员</span></h1>
 
@@ -325,6 +372,22 @@
       </div>
       <div id="classMsg" class="msg"></div>
       <div id="classStats" class="stats"></div>
+
+      <div id="classCharts" hidden>
+        <div class="chart-block" id="gradeBlock">
+          <div class="chart-head">成绩等级分布<span class="chart-sub" id="gradeSub"></span></div>
+          <div class="chart-box"><canvas id="gradeChart"></canvas></div>
+        </div>
+        <div class="chart-block" id="questionBlock">
+          <div class="chart-head">各题得分率<span class="chart-sub" id="questionSub"></span></div>
+          <div class="chart-box scroll-x"><canvas id="questionChart"></canvas></div>
+        </div>
+        <div class="chart-block" id="studentBlock">
+          <div class="chart-head">学生成绩排行<span class="chart-sub" id="studentSub"></span></div>
+          <div class="chart-box scroll-x"><canvas id="studentChart"></canvas></div>
+        </div>
+      </div>
+
       <div id="classListWrap"></div>
     </div>
 
@@ -426,7 +489,7 @@
     adminMode: false,
     chartView: { start: 0, end: 0 },
     chartStudentName: '',
-    shortcuts: Object.create(null)   // 关键字 → URL
+    shortcuts: Object.create(null)   /* 关键字跳转：key → URL */
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -439,7 +502,17 @@
       classBtn       = $('classBtn'),
       classMsg       = $('classMsg'),
       classStats     = $('classStats'),
+      classCharts    = $('classCharts'),
       classListWrap  = $('classListWrap'),
+      gradeBlock     = $('gradeBlock'),
+      gradeChart     = $('gradeChart'),
+      gradeSub       = $('gradeSub'),
+      questionBlock  = $('questionBlock'),
+      questionChart  = $('questionChart'),
+      questionSub    = $('questionSub'),
+      studentBlock   = $('studentBlock'),
+      studentChart   = $('studentChart'),
+      studentSub     = $('studentSub'),
       searchPanel    = $('searchPanel'),
       searchLabel    = $('searchLabel'),
       idRow          = $('idRow'),
@@ -855,6 +928,7 @@
   /* =========================================================
      wy.txt：关键字跳转表
      每行格式： 关键字 URL
+     例：123456 baidu.com/11
      ========================================================= */
 
   function loadShortcuts() {
@@ -867,7 +941,6 @@
         var line = raw.trim();
         if (!line || line.charAt(0) === '#') continue;
 
-        // 按第一个空白分隔关键字和 URL
         var m = line.match(/^(\S+)\s+(.+)$/);
         if (!m) continue;
         var key = m[1];
@@ -881,16 +954,16 @@
     });
   }
 
-  /* 规范化 URL：自动补协议 */
+  /* 补全 URL 协议 */
   function normalizeURL(url) {
     var u = String(url || '').trim();
     if (!u) return '';
-    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(u)) return u;   // 已有协议（http:, https:, mailto: 等）
+    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(u)) return u;
     if (u.indexOf('//') === 0) return 'https:' + u;
     return 'https://' + u;
   }
 
-  /* 检查关键字并跳转；返回 true 表示已处理 */
+  /* 检查输入是否为跳转关键字，若是则跳转并返回 true */
   function checkShortcut(rawInput) {
     var key = String(rawInput || '').trim();
     if (!key) return false;
@@ -901,19 +974,14 @@
     if (!target) return false;
 
     setMsg(loadMsg, '正在跳转到：' + target, 'ok');
-
-    // 稍短延迟让提示可见，然后跳转
     setTimeout(function () {
       location.href = target;
     }, 180);
-
     return true;
   }
 
   /* =========================================================
      GitHub 配置读取
-     - glp.txt：仅一行，令牌（自动加 github_pat_ 前缀）
-     - 用户名.txt：第 1 行用户名，第 2 行仓库名（可选第 3 行分支）
      ========================================================= */
 
   function loadGithubConfig() {
@@ -1365,7 +1433,19 @@
       return b.total - a.total;
     });
 
-    return { records: records, questions: questions };
+    var fullTotal = 0;
+    for (var qi = 0; qi < questions.length; qi++) fullTotal += questions[qi].full;
+
+    var maxTotal = 0;
+    for (var ri = 0; ri < records.length; ri++) {
+      if (records[ri].absent === '' && records[ri].total > maxTotal) maxTotal = records[ri].total;
+    }
+
+    if (!(fullTotal > 0) || fullTotal < maxTotal) {
+      fullTotal = maxTotal;
+    }
+
+    return { records: records, questions: questions, fullTotal: fullTotal };
   }
 
   function activateSheet(sheet, label) {
@@ -1374,6 +1454,7 @@
     classPanel.hidden = false; searchPanel.hidden = false;
     classInput.value = ''; idInput.value = ''; nameInput.value = '';
     classStats.innerHTML = ''; classListWrap.innerHTML = '';
+    classCharts.hidden = true; classChartData = null;
     setMsg(classMsg, '', ''); setMsg(searchMsg, '', '');
     resultEl.innerHTML = '';
   }
@@ -1385,6 +1466,7 @@
     loadBtn.disabled = true; loadBtn.textContent = '读取中';
     setMsg(loadMsg, '正在读取…', 'info');
     resultEl.innerHTML = ''; classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
+    classCharts.hidden = true; classChartData = null;
     fetchSheetRows(fileName).then(function (got) {
       var sheet;
       try { sheet = buildSheet(got.rows); }
@@ -1404,7 +1486,7 @@
   function handleLoad() {
     var raw = dateInput.value.trim();
 
-    // ① 管理员登录：gly + 密码
+    /* ① 管理员登录：gly + 密码 */
     if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
       var pwd = raw.slice(3).trim();
       if (pwd) {
@@ -1417,10 +1499,10 @@
       }
     }
 
-    // ② 关键字跳转：wy.txt
+    /* ② 关键字跳转：wy.txt */
     if (checkShortcut(raw)) return;
 
-    // ③ 正常读取成绩单
+    /* ③ 正常读取成绩单 */
     doLoadSheet(raw);
   }
 
@@ -1474,6 +1556,7 @@
     if (sheet) activateSheet(sheet, fileName);
     else {
       state.sheet = null; classPanel.hidden = true; searchPanel.hidden = true;
+      classCharts.hidden = true; classChartData = null;
       resultEl.innerHTML = '';
       setMsg(loadMsg, '已读取 ' + fileName + '，已显示原始表格（非成绩单格式，无法启用查询）。', 'info');
     }
@@ -1548,6 +1631,266 @@
   }
 
   /* =========================================================
+     柱状图绘制（班级图表）
+     ========================================================= */
+
+  function cssRoundRect(ctx, x, y, w, h, r) {
+    if (h <= 0) return;
+    r = Math.min(r, w / 2, h / 2);
+    if (r < 0.5) { ctx.beginPath(); ctx.rect(x, y, w, h); ctx.closePath(); return; }
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function drawBarChart(canvas, cfg) {
+    if (!canvas) return;
+    var holder = canvas.parentNode;
+    var availW = Math.floor(holder.clientWidth || 0);
+    if (availW < 60) availW = Math.max(260, (document.documentElement.clientWidth || 360) - 60);
+
+    var w = cfg.width ? Math.max(cfg.width, availW) : availW;
+    var h = cfg.height || 230;
+    var dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var labels = cfg.labels || [];
+    var values = cfg.values || [];
+    var colors = cfg.colors || [];
+    var n = values.length;
+    if (!n) return;
+
+    var maxV = cfg.maxV;
+    if (maxV == null) {
+      maxV = 0;
+      for (var q = 0; q < n; q++) if (values[q] > maxV) maxV = values[q];
+    }
+    if (!(maxV > 0)) maxV = 1;
+
+    var rotate = (cfg.rotateLabels != null) ? cfg.rotateLabels : (n > 9);
+    var padL = (cfg.padL != null) ? cfg.padL : 42;
+    var padR = 14;
+    var padT = 26;
+    var padB = rotate ? 66 : 36;
+    var plotW = Math.max(40, w - padL - padR);
+    var plotH = Math.max(40, h - padT - padB);
+
+    var ticks = 5;
+    ctx.font = '11px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    for (var t = 0; t <= ticks; t++) {
+      var tv = maxV * t / ticks;
+      var ty = padT + plotH - (tv / maxV) * plotH;
+      ctx.strokeStyle = (t === 0) ? '#dbe2ec' : '#eef1f6';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, Math.round(ty) + 0.5);
+      ctx.lineTo(padL + plotW, Math.round(ty) + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = '#98a2b3';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(cfg.yFmt ? cfg.yFmt(tv) : String(Math.round(tv)), padL - 8, ty);
+    }
+
+    var slot = plotW / n;
+    var barW = Math.max(5, Math.min(cfg.maxBarW || 46, slot * 0.58));
+    var baseY = padT + plotH;
+    var showValue = cfg.showValue !== false && slot > 16;
+
+    for (var k = 0; k < n; k++) {
+      var cx = padL + slot * k + slot / 2;
+      var v = values[k];
+      var bh = (v / maxV) * plotH;
+      if (!(bh > 0)) bh = 0;
+      if (bh > plotH) bh = plotH;
+      var x = cx - barW / 2;
+      var y = baseY - bh;
+      var col = colors[k] || '#05c1ae';
+
+      if (bh > 0.8) {
+        ctx.fillStyle = col;
+        cssRoundRect(ctx, x, y, barW, bh, Math.min(4, barW / 2, bh / 2));
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(x, baseY - 2, barW, 2);
+      }
+
+      if (showValue) {
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold ' + (slot > 28 ? '11.5' : '10.5') + 'px -apple-system,"PingFang SC",sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        var vt = cfg.vFmt ? cfg.vFmt(v) : String(Math.round(v * 100) / 100);
+        ctx.fillText(vt, cx, y - 5);
+      }
+
+      if (labels[k] != null) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px -apple-system,"PingFang SC",sans-serif';
+        if (rotate) {
+          ctx.save();
+          ctx.translate(cx, baseY + 10);
+          ctx.rotate(-Math.PI / 4);
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labels[k], 0, 0);
+          ctx.restore();
+        } else {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(labels[k], cx, baseY + 8);
+        }
+      }
+    }
+  }
+
+  /* =========================================================
+     班级图表渲染
+     ========================================================= */
+
+  var classChartData = null;
+
+  function renderClassCharts() {
+    if (!classChartData || !state.sheet) { classCharts.hidden = true; return; }
+    var list = classChartData.list || [];
+    var taken = list.filter(function (r) { return r.absent === ''; });
+    if (!taken.length) { classCharts.hidden = true; return; }
+
+    classCharts.hidden = false;
+
+    var fullTotal = classChartData.fullTotal;
+    if (!(fullTotal > 0)) {
+      var mx = 0;
+      taken.forEach(function (r) { if (r.total > mx) mx = r.total; });
+      fullTotal = mx;
+    }
+
+    if (fullTotal > 0) {
+      gradeBlock.hidden = false;
+      var bands = [
+        { label: '优秀', min: 0.85, color: '#00b578' },
+        { label: '良好', min: 0.70, color: '#05c1ae' },
+        { label: '及格', min: 0.60, color: '#ff9500' },
+        { label: '不及格', min: -1, color: '#f53f3f' }
+      ];
+      var counts = [0, 0, 0, 0];
+      taken.forEach(function (r) {
+        var ratio = r.total / fullTotal;
+        if (ratio >= 0.85) counts[0]++;
+        else if (ratio >= 0.70) counts[1]++;
+        else if (ratio >= 0.60) counts[2]++;
+        else counts[3]++;
+      });
+      gradeSub.textContent = '本次满分基准 ' + fmt(fullTotal) + ' 分 · 实考 ' + taken.length + ' 人';
+      drawBarChart(gradeChart, {
+        labels: bands.map(function (b) { return b.label; }),
+        values: counts,
+        colors: bands.map(function (b) { return b.color; }),
+        maxBarW: 62,
+        height: 226,
+        yFmt: function (v) { return String(Math.round(v)); },
+        vFmt: function (v) { return v + '人'; }
+      });
+    } else {
+      gradeBlock.hidden = true;
+    }
+
+    var qs = state.sheet.questions || [];
+    var hasQuestionFull = qs.some(function (q) { return q.full > 0; });
+    if (qs.length && hasQuestionFull) {
+      questionBlock.hidden = false;
+      var qLabels = [], qValues = [], qColors = [];
+      qs.forEach(function (q, idx) {
+        var sum = 0, cnt = 0;
+        taken.forEach(function (r) {
+          var d = r.details[idx];
+          if (d) { sum += d.score; cnt++; }
+        });
+        var rate = (cnt && q.full > 0) ? (sum / cnt) / q.full : 0;
+        qLabels.push(/^\d+$/.test(q.name) ? ('第' + q.name + '题') : q.name);
+        qValues.push(rate);
+        qColors.push(rate >= 0.8 ? '#00b578' : rate >= 0.6 ? '#05c1ae' : rate >= 0.4 ? '#ff9500' : '#f53f3f');
+      });
+      var boxW = questionChart.parentNode.clientWidth || 300;
+      var qW = Math.max(boxW, qs.length * 34 + 70);
+      questionSub.textContent = '共 ' + qs.length + ' 题 · 班级平均得分率';
+      drawBarChart(questionChart, {
+        labels: qLabels,
+        values: qValues,
+        colors: qColors,
+        maxV: 1,
+        width: qW,
+        height: 250,
+        maxBarW: 40,
+        rotateLabels: qs.length > 8,
+        yFmt: function (v) { return Math.round(v * 100) + '%'; },
+        vFmt: function (v) { return Math.round(v * 100) + '%'; }
+      });
+    } else {
+      questionBlock.hidden = true;
+    }
+
+    if (state.adminMode && taken.length) {
+      studentBlock.hidden = false;
+      var sLabels = taken.map(function (r) { return r.name; });
+      var sValues = taken.map(function (r) { return r.total; });
+      var sColors = taken.map(function () { return '#05c1ae'; });
+      if (sColors.length > 0) sColors[0] = '#f5a623';
+      if (sColors.length > 1) sColors[1] = '#7ab8ff';
+      if (sColors.length > 2) sColors[2] = '#c98b4b';
+
+      var sBoxW = studentChart.parentNode.clientWidth || 300;
+      var sW = Math.max(sBoxW, taken.length * 38 + 70);
+
+      var maxScore = 0;
+      sValues.forEach(function (v) { if (v > maxScore) maxScore = v; });
+      var sMax = Math.ceil(maxScore + Math.max(5, maxScore * 0.06));
+
+      studentSub.textContent = '共 ' + taken.length + ' 人（按名次排列，可左右滑动查看）';
+      drawBarChart(studentChart, {
+        labels: sLabels,
+        values: sValues,
+        colors: sColors,
+        maxV: sMax,
+        width: sW,
+        height: 260,
+        maxBarW: 30,
+        rotateLabels: taken.length > 10,
+        yFmt: function (v) { return String(Math.round(v)); },
+        vFmt: function (v) { return String(Math.round(v)); }
+      });
+    } else {
+      studentBlock.hidden = true;
+    }
+  }
+
+  var classChartResizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (!classChartData || classCharts.hidden) return;
+    if (classChartResizeTimer) clearTimeout(classChartResizeTimer);
+    classChartResizeTimer = setTimeout(function () {
+      classChartResizeTimer = null;
+      renderClassCharts();
+    }, 180);
+  });
+
+  /* =========================================================
      班级查询
      ========================================================= */
 
@@ -1558,7 +1901,9 @@
     var key = normalizeClass(raw);
     var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
     classStats.innerHTML = ''; classListWrap.innerHTML = ''; resultEl.innerHTML = '';
+    classCharts.hidden = true; classChartData = null;
     if (!list.length) { setMsg(classMsg, '未找到该班级。', 'error'); return; }
+
     var taken = list.filter(function (r) { return r.absent === ''; });
     var absentCount = list.length - taken.length;
     function avgOf(arr, field) {
@@ -1574,10 +1919,15 @@
     html += statBox('平均客观分', taken.length ? fmt1(avgObj) : '—', taken.length ? ' 分' : '');
     html += statBox('平均主观分', taken.length ? fmt1(avgSub) : '—', taken.length ? ' 分' : '');
     classStats.innerHTML = html;
+
     var info = (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
       (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '');
     if (!state.adminMode) info += ' · 如需查看个人成绩，请在下方输入姓名（及考号）。';
     setMsg(classMsg, info, 'info');
+
+    var fullTotal = state.sheet.fullTotal || 0;
+    classChartData = { list: list, fullTotal: fullTotal };
+    renderClassCharts();
 
     if (state.adminMode) {
       var head = document.createElement('div'); head.className = 'list-head';
@@ -2019,8 +2369,8 @@
       ctx.fillText(String(Math.round(vv)), padL - 6, y);
     }
 
-    ctx.strokeStyle = '#3b6cf6';
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = '#05c1ae';
+    ctx.lineWidth = 2.4;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     viewPoints.forEach(function (p, i) {
@@ -2035,7 +2385,7 @@
       var x = xPos(i), y = yPos(p.total);
       ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
       ctx.fillStyle = '#fff'; ctx.fill();
-      ctx.strokeStyle = '#3b6cf6'; ctx.lineWidth = 2.2; ctx.stroke();
+      ctx.strokeStyle = '#05c1ae'; ctx.lineWidth = 2.2; ctx.stroke();
 
       if (showLabel) {
         ctx.fillStyle = '#1f2937';
@@ -2278,12 +2628,13 @@
     var n = points.length;
     var scores = points.map(function (p) { return p.total; });
     var sum = scores.reduce(function (a, b) { return a + b; }, 0);
-    var avg = sum / n;
-    var maxV = Math.max.apply(null, scores), minV = Math.min.apply(null, scores);
+    var avg = n ? sum / n : 0;
+    var maxV = scores.length ? Math.max.apply(null, scores) : 0;
+    var minV = scores.length ? Math.min.apply(null, scores) : 0;
     var maxIdx = scores.indexOf(maxV), minIdx = scores.indexOf(minV);
     var variance = 0;
     for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
-    variance /= n;
+    variance = n ? variance / n : 0;
     var std = Math.sqrt(variance);
     var slope = 0;
     if (n > 1) {
@@ -2316,8 +2667,16 @@
     var parts = [];
     parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
     parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
-    parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
-    parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
+    if (maxIdx >= 0 && points[maxIdx]) {
+      parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
+    } else {
+      parts.push('最高：<b>' + fmt(maxV) + '</b> 分');
+    }
+    if (minIdx >= 0 && points[minIdx]) {
+      parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
+    } else {
+      parts.push('最低：<b>' + fmt(minV) + '</b> 分');
+    }
     var text = parts.join('　·　');
     if (errors && errors.length) {
       text += '<br><span style="color:#8b95a7;font-size:12.5px;">另有 ' + errors.length +
@@ -2355,6 +2714,7 @@
     setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
     rawTableWrap.innerHTML = ''; resultEl.innerHTML = '';
     classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
+    classCharts.hidden = true; classChartData = null;
     var reader = new FileReader();
     reader.onload = function (ev) { fileInput.value = ''; processBuffer(ev.target.result, name); };
     reader.onerror = function () {
@@ -2396,7 +2756,7 @@
   loadNotice();
   loadTOC();
   loadIdName();
-  loadShortcuts();
+  loadShortcuts();     /* ★ 加载 wy.txt 关键字跳转表 */
   loadGithubConfig().then(function () {
     uploadVisitInfo().catch(function (e) {
       showToast('访问记录上传失败', translateError(e), 'error', 8000);
