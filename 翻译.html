@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语作文与翻译展示</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --container-bg: #ffffff;
+            --text-main: #333333;
+            --text-secondary: #555555;
+            --primary-color: #3498db;
+            --english-font: 'Georgia', 'Times New Roman', serif;
+            --chinese-font: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            font-family: var(--chinese-font);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 40px;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 20px;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            font-size: 1.4em;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 12px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        /* 英文样式 */
+        .english-text {
+            font-family: var(--english-font);
+            font-size: 1.15em;
+            color: #2c3e50;
+            text-align: justify;
+            text-indent: 2em;
+            margin-bottom: 15px;
+        }
+
+        /* 中文样式 */
+        .chinese-text {
+            font-family: var(--chinese-font);
+            font-size: 1.05em;
+            color: var(--text-secondary);
+            text-align: justify;
+            text-indent: 2em;
+            margin-bottom: 15px;
+            background-color: #fafbfc;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        /* 高亮标记 */
+        .highlight {
+            font-weight: 600;
+            color: #e74c3c;
+        }
+
+        /* 底部注释 */
+        .note {
+            font-size: 0.85em;
+            color: #999;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 40px;
+            border-left: 3px solid #ccc;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .english-text, .chinese-text {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>英语作文与翻译</h1>
+        <div class="subtitle">deepseek基于手写原稿识别与翻译</div>
+
+        <!-- 英文原文部分 -->
+        <div class="section">
+            <h2>English Original Text</h2>
+            <p class="english-text">
+                The classroom used to have only a blackboard, chalk and a teacher's voice, but now, students can use AI Pad to answer questions, learn and join in the online lesson. This scene has happened at my junior high school.
+            </p>
+            <p class="english-text">
+                Today, Guangzhou has built thousands of AI schools and a smart network that benefits two million students. And three schools have been selected as AI education bases. This derives from Guangzhou's Education Model and "Guangzhou Primary and Secondary School Artificial Intelligence Teaching Platform".
+            </p>
+            <p class="english-text">
+                Rooted in the Lingnan Academy tradition of "practical application and open-mindedness," Guangzhou NO.2 High School has built its educational philosophy around the "Yuan Culture", embodying the motto "Stand tall and grounded" to pass on heritage while nurturing character. In June 2025, Guangzhou NO.2 High School hosted a teaching seminar themed "AI-Empowered High School Chinese Classroom Teaching." Teacher Huang Jiahan guided students to use AI tools to create cover designs based on the imagery of classical poetry, deepening their understanding of the emotions in the works.
+            </p>
+            <p class="english-text">
+                From the simple blackboard to today's smart tablet, the real change is not only the device, but also the way we connect knowledge and culture. Guangzhou's education model proves that technology and tradition can go hand in hand.
+            </p>
+        </div>
+
+        <!-- 中文翻译部分 -->
+        <div class="section">
+            <h2>中文翻译</h2>
+            <p class="chinese-text">
+                教室过去只有黑板、粉笔和老师的声音，但现在，学生们可以使用AI平板（AI Pad）来回答问题、学习并参与在线课程。这一幕发生在我所在的初中。
+            </p>
+            <p class="chinese-text">
+                如今，广州已建成数千所AI学校和一张惠及两百万学生的智能网络。还有三所学校被选为AI教育基地。这源于广州的教育模式和“广州市中小学人工智能教学平台”。
+            </p>
+            <p class="chinese-text">
+                植根于岭南书院“经世致用、开放包容”的传统，广州市第二中学围绕“元文化”构建了其教育理念，践行“顶天立地”的校训，在传承中培育品格。2025年6月，广州市第二中学举办了一场以“AI赋能高中语文课堂教学”为主题的教学研讨会。黄佳涵（音译）老师引导学生利用AI工具，基于古典诗词的意象创作封面设计，加深了他们对作品情感的理解。
+            </p>
+            <p class="chinese-text">
+                从简单的黑板到今天的智能平板，真正的变化不仅是设备，更是我们连接知识与文化的方式。广州的教育模式证明，技术与传统可以携手并进。
+            </p>
+        </div>
+
+        <!-- 底部注记 -->
+        <div class="note">
+            <strong>注：</strong> 原手写稿中存在少量笔误（如“Pid”应为“Pad”，“This scenes”应为“This scene”，“that it benefits to”应为“that benefits”），以上英文原文已作适度修正以符合标准英语表达。
+        </div>
+    </div>
+
+</body>
+</html>
