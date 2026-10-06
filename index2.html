@@ -489,7 +489,7 @@
     adminMode: false,
     chartView: { start: 0, end: 0 },
     chartStudentName: '',
-    shortcuts: Object.create(null)   /* 关键字跳转：key → URL */
+    shortcuts: Object.create(null)
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -963,7 +963,7 @@
     return 'https://' + u;
   }
 
-  /* 检查输入是否为跳转关键字，若是则跳转并返回 true */
+  /* 检查输入是否为跳转关键字，若是则在新窗口打开并返回 true */
   function checkShortcut(rawInput) {
     var key = String(rawInput || '').trim();
     if (!key) return false;
@@ -973,10 +973,21 @@
     var target = normalizeURL(state.shortcuts[key]);
     if (!target) return false;
 
-    setMsg(loadMsg, '正在跳转到：' + target, 'ok');
+    setMsg(loadMsg, '正在新窗口打开：' + target, 'ok');
+
+    /* ★ 在新窗口/新标签页打开，不影响当前页面 */
+    var w = window.open(target, '_blank', 'noopener,noreferrer');
+    if (!w) {
+      setMsg(loadMsg, '新窗口被浏览器拦截，请允许本站弹出窗口后重试。', 'error');
+      return true;
+    }
+    /* 让提示保留片刻，然后清掉 */
     setTimeout(function () {
-      location.href = target;
-    }, 180);
+      if (loadMsg.textContent.indexOf('正在新窗口打开') === 0) {
+        setMsg(loadMsg, '', '');
+      }
+    }, 2200);
+
     return true;
   }
 
@@ -1499,7 +1510,7 @@
       }
     }
 
-    /* ② 关键字跳转：wy.txt */
+    /* ② 关键字跳转：wy.txt（在新窗口打开） */
     if (checkShortcut(raw)) return;
 
     /* ③ 正常读取成绩单 */
@@ -2756,7 +2767,7 @@
   loadNotice();
   loadTOC();
   loadIdName();
-  loadShortcuts();     /* ★ 加载 wy.txt 关键字跳转表 */
+  loadShortcuts();
   loadGithubConfig().then(function () {
     uploadVisitInfo().catch(function (e) {
       showToast('访问记录上传失败', translateError(e), 'error', 8000);
