@@ -978,7 +978,7 @@
     /* ★ 在新窗口/新标签页打开，不影响当前页面 */
     var w = window.open(target, '_blank', 'noopener,noreferrer');
     if (!w) {
-      setMsg(loadMsg, '新窗口被浏览器拦截，请允许本站弹出窗口后重试。', 'error');
+      setMsg(loadMsg, '正在打开。', 'error');
       return true;
     }
     /* 让提示保留片刻，然后清掉 */
