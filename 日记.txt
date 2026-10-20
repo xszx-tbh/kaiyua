@@ -1,29 +1,6 @@
 {
-  "count": 180,
+  "count": 181,
   "entries": [
-    {
-      "localTime": "Sat Oct 17 2026 13:57:33 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-10-17T05:57:33.104Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 12; PEAM00 Build/SP1A.210812.016; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.189 Mobile Safari/537.36 XWEB/1500145 MMWEBSDK/20260901 MMWEBID/9161 REV/260bdba5dc9b5c34a97d8520b28ba30d6850cf3b MicroMessenger/8.0.78.3180(0x28004E3B) WeChat/arm64 Weixin NetType/5G Language/zh_CN ABI/arm64",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 8,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "400x889",
-      "availScreen": "400x889",
-      "colorDepth": 24,
-      "pixelRatio": 2.700000047683716,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Sat Oct 17 2026 16:11:20 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-17T08:11:20.130Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": "https://weixin110.qq.com/"
+    },
+    {
+      "localTime": "Tue Oct 20 2026 21:48:51 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-20T13:48:51.414Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0",
+      "language": "zh-CN",
+      "languages": "zh-CN,en,en-GB,en-US",
+      "platform": "Win32",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 12,
+      "deviceMemory": 8,
+      "maxTouchPoints": 20,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "1280x720",
+      "availScreen": "1280x680",
+      "colorDepth": 24,
+      "pixelRatio": 0.75,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/fike",
+      "referrer": ""
     }
   ]
 }
