@@ -1,29 +1,6 @@
 {
-  "count": 182,
+  "count": 183,
   "entries": [
-    {
-      "localTime": "Sat Oct 17 2026 17:03:12 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-10-17T09:03:12.607Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.79 Safari/537.36",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 4,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "320x694",
-      "availScreen": "320x694",
-      "colorDepth": 24,
-      "pixelRatio": 3.375,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": ""
-    },
     {
       "localTime": "Sat Oct 17 2026 17:03:51 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-17T09:03:51.450Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
+    },
+    {
+      "localTime": "Wed Oct 21 2026 22:08:17 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-21T14:08:17.466Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.79(0x18004f2e) NetType/4G Language/zh_CN",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "402x874",
+      "availScreen": "402x874",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
