@@ -1,29 +1,6 @@
 {
-  "count": 191,
+  "count": 192,
   "entries": [
-    {
-      "localTime": "Sat Oct 17 2026 21:34:07 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-10-17T13:34:07.850Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 12; SCMR-W09 Build/HUAWEISCMR-W09; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/146.0.7680.178 Safari/537.36 XWEB/1460249 MMWEBSDK/20250802 MMWEBID/9519 MicroMessenger/8.0.62.2900(0x28003EA0) WeChat/arm64 Weixin Android Tablet NetType/WIFI Language/zh_CN ABI/arm64",
-      "language": "zh-CN",
-      "languages": "zh-CN,ja-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 4,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "700x1120",
-      "availScreen": "700x1120",
-      "colorDepth": 24,
-      "pixelRatio": 2.2857143878936768,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": ""
-    },
     {
       "localTime": "Sat Oct 17 2026 21:35:14 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-17T13:35:14.582Z",
@@ -459,6 +436,29 @@
       "timezone": "Asia/Shanghai",
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/%E6%88%90%E7%BB%A9",
+      "referrer": ""
+    },
+    {
+      "localTime": "Fri Oct 23 2026 22:55:57 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-23T14:55:57.747Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 EdgA/138.0.0.0",
+      "language": "zh-CN",
+      "languages": "zh-CN,zh",
+      "platform": "Linux armv81",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 4,
+      "maxTouchPoints": 2,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "960x600",
+      "availScreen": "960x600",
+      "colorDepth": 24,
+      "pixelRatio": 1.9389615058898926,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/%E6%88%90%E7%BB%A9#",
       "referrer": ""
     }
   ]
