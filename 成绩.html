@@ -713,10 +713,10 @@
     '体育', '音乐', '美术', '计算机'
   ];
 
-  /* ★ 解析成绩单 ID
-     - 8位数字：纯日期（数学等单文件）
-     - 10位数字：8位日期 + 2位班级（英语等多班级文件）
-     - 前缀字母映射到学科
+  /* 解析成绩单 ID
+     - 8位数字：纯日期
+     - 10位数字：8位日期 + 2位班级
+     - 前缀字母映射学科
   --------------------------------- */
   function parseSheetId(id) {
     var raw = String(id).trim().replace(/\.[A-Za-z0-9]{1,6}$/, '');
@@ -916,17 +916,17 @@
     return Promise.resolve(parseCSV(text));
   }
 
-  function fetchSheetRows(inputName) {
+  /* 查询成绩单：preferExcel 为 true 时先查表格文件（x. 前缀） */
+  function fetchSheetRows(inputName, preferExcel) {
     var base = inputName;
     var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
-    var candidates = hasExt ? [base] : [
-      base + '.txt',
-      base + '.csv',
-      base + '.xlsx',
-      base + '.xls',
-      base + '.xlsm',
-      base + '.xlsb'
-    ];
+
+    var textExts = ['.txt', '.csv'];
+    var excelExts = ['.xlsx', '.xls', '.xlsm', '.xlsb'];
+    var orderedExts = preferExcel ? excelExts.concat(textExts) : textExts.concat(excelExts);
+
+    var candidates = hasExt ? [base] : orderedExts.map(function (ext) { return base + ext; });
+
     var last = null;
     var allNotFound = true;
 
@@ -941,7 +941,7 @@
     function tryNext(i) {
       if (i >= candidates.length) {
         if (allNotFound || !last) {
-          var e = new Error('未找到成绩单 ' + base + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确');
+          var e = new Error('未找到成绩单 ' + base + '（已尝试 ' + orderedExts.join(' / ') + '），请检查文件名是否正确');
           e.code = 'NOT_FOUND';
           return Promise.reject(e);
         }
@@ -1408,7 +1408,6 @@
   function buildSheet(rows, fileNameHint) {
     if (!rows.length) throw new Error('文件内容为空。');
 
-    /* 1. 找表头行：扫描前 20 行，找包含"姓名"的行 */
     var headerRowIdx = -1;
     for (var hi = 0; hi < Math.min(rows.length, 20); hi++) {
       var hr = rows[hi];
@@ -1427,7 +1426,6 @@
       return String(h == null ? '' : h).replace(/^\uFEFF/, '').trim();
     });
 
-    /* 2. 识别列 */
     var col = {
       name: -1, rank: -1, clsRank: -1, cls: -1, absent: -1,
       total: -1, obj: -1, sub: -1, stuId: -1
@@ -1456,7 +1454,6 @@
 
     if (col.name === -1) throw new Error('文件中没有找到“姓名”列。');
 
-    /* 3. 识别题目列：数学题型（题号+满分）与英语题型（固定满分） */
     var ENGLISH_FULL_MAP = {
       '阅读理解': 37.5,
       '七选五': 12.5,
@@ -1486,14 +1483,12 @@
 
     if (!questions.length) throw new Error('文件中没有找到题目得分列。');
 
-    /* 4. 从文件名提取班级（如 yy2026090107 → 07） */
     var hintCls = '';
     if (fileNameHint) {
       var fm = String(fileNameHint).match(/^\D*(\d{8})(\d{2})(?:\.[A-Za-z0-9]+)?$/);
       if (fm) hintCls = fm[2];
     }
 
-    /* 5. 读取数据行 */
     var records = [];
     for (var i = headerRowIdx + 1; i < rows.length; i++) {
       var r = rows[i];
@@ -1517,7 +1512,6 @@
       var objScore = col.obj !== -1 ? toNum(r[col.obj]) : 0;
       var subScore = col.sub !== -1 ? toNum(r[col.sub]) : 0;
 
-      /* 英语：按题型拆分客观/主观 */
       if (isEnglish) {
         objScore = 0;
         subScore = 0;
@@ -1544,7 +1538,6 @@
 
     if (!records.length) throw new Error('没有解析到任何学生记录。');
 
-    /* 6. 自动排名（无排名列时） */
     if (col.rank === -1) {
       var ranked = records.filter(function (r) { return r.absent === ''; });
       ranked.sort(function (a, b) { return b.total - a.total; });
@@ -1559,7 +1552,6 @@
       records.forEach(function (r) { if (r.absent !== '') r.rank = ''; });
     }
 
-    /* 7. 排序：优先班级排名，其次年级排名 */
     function rankValue(rec) {
       var r = String(rec.clsRank || rec.rank || '').trim();
       if (!r || r === '0') return Number.POSITIVE_INFINITY;
@@ -1573,7 +1565,6 @@
       return b.total - a.total;
     });
 
-    /* 8. 满分基准 */
     var fullTotal = 0;
     for (var qi = 0; qi < questions.length; qi++) fullTotal += questions[qi].full;
 
@@ -1600,7 +1591,7 @@
     resultEl.innerHTML = '';
   }
 
-  function doLoadSheet(rawName) {
+  function doLoadSheet(rawName, preferExcel) {
     var fileName = sanitizeFileName(rawName);
     if (!fileName) { setMsg(loadMsg, '请输入考试日期或文件名。', 'error'); return; }
     dateInput.value = fileName;
@@ -1608,16 +1599,16 @@
     setMsg(loadMsg, '正在读取…', 'info');
     resultEl.innerHTML = ''; classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
     classCharts.hidden = true; classChartData = null;
-    fetchSheetRows(fileName).then(function (got) {
+    fetchSheetRows(fileName, !!preferExcel).then(function (got) {
       var sheet;
       try { sheet = buildSheet(got.rows, got.fileName); }
       catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return; }
       activateSheet(sheet, got.fileName);
     }).catch(function (err) {
       if (err && err.code === 'NOT_FOUND') {
-        setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
+        setMsg(loadMsg, err.message, 'error');
       } else if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
-        setMsg(loadMsg, '未找到成绩单 ' + fileName + '（已尝试 .txt / .csv / .xlsx / .xls 等后缀），请检查文件名是否正确。', 'error');
+        setMsg(loadMsg, '未找到成绩单 ' + fileName + '，请检查文件名是否正确。', 'error');
       } else {
         setMsg(loadMsg, '读取失败：' + translateError(err), 'error');
       }
@@ -1632,13 +1623,21 @@
         loadBtn.disabled = true;
         tryAdminLogin(pwd).then(function (ok) {
           loadBtn.disabled = false;
-          if (!ok) doLoadSheet(raw);
+          if (!ok) doLoadSheet(raw, false);
         });
         return;
       }
     }
     if (checkShortcut(raw)) return;
-    doLoadSheet(raw);
+
+    /* 如果输入的名字来自 ml.txt 条目，沿用它的 preferExcel 标记 */
+    var preferExcel = false;
+    var toc = state.tocEntries || [];
+    for (var i = 0; i < toc.length; i++) {
+      var key = toc[i].fullId || toc[i].id;
+      if (key === raw) { preferExcel = !!toc[i].preferExcel; break; }
+    }
+    doLoadSheet(raw, preferExcel);
   }
 
   /* =========================================================
@@ -1704,38 +1703,81 @@
 
   /* =========================================================
      考试目录
-     ★ 支持 ml.txt 中的多班级格式：yy20260901(7班,1班)
+     ★ 支持：
+       - 纯日期 / 日期+班级
+       - 多班级括号写法：yy20260901(7班,1班)
+       - 逗号后的注释：...,wu测试
+       - x. 前缀：优先查表格文件
      ========================================================= */
+
+  /* 找到括号外第一个逗号（中英文均可），拆成主体和注释 */
+  function splitMainComment(line) {
+    var depth = 0;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '(' || c === '（') depth++;
+      else if (c === ')' || c === '）') { if (depth > 0) depth--; }
+      else if (depth === 0 && (c === '，' || c === ',')) {
+        return { main: line.slice(0, i).trim(), comment: line.slice(i + 1).trim() };
+      }
+    }
+    return { main: line.trim(), comment: '' };
+  }
+
+  function parseTOCLine(line) {
+    var raw = String(line == null ? '' : line).replace(/^\uFEFF/, '').trim();
+    if (!raw || raw.charAt(0) === '#') return [];
+
+    var sp = splitMainComment(raw);
+    var main = sp.main;
+    var comment = sp.comment;
+
+    /* x. 前缀：优先表格文件 */
+    var preferExcel = false;
+    if (/^[xX]\./.test(main)) {
+      preferExcel = true;
+      main = main.slice(2).trim();
+    }
+
+    if (!main) return [];
+
+    var result = [];
+
+    /* 多班级格式：base(7班,1班) */
+    var m = main.match(/^([^()（）]+)[(（]([^)）]+)[)）]$/);
+    if (m) {
+      var base = m[1].trim();
+      var classes = m[2].split(/[,，]/).map(function (s) {
+        return s.trim().replace(/[^0-9]/g, '');
+      }).filter(function (s) { return s; });
+
+      if (classes.length && base) {
+        classes.forEach(function (clsNum) {
+          var padded = clsNum.length === 1 ? '0' + clsNum : clsNum;
+          var e = parseSheetId(base + padded);
+          e.comment = comment;
+          e.preferExcel = preferExcel;
+          result.push(e);
+        });
+        return result;
+      }
+    }
+
+    var single = parseSheetId(main);
+    single.comment = comment;
+    single.preferExcel = preferExcel;
+    result.push(single);
+    return result;
+  }
 
   function loadTOC() {
     fetchText(sheetURL('ml.txt')).then(function (text) {
       var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       var entries = [];
-
       for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line || line.charAt(0) === '#') continue;
-
-        // 多班级格式: base(7班,1班)
-        var m = line.match(/^([^()]+)\(([^)]+)\)$/);
-        if (m) {
-          var base = m[1].trim();
-          var classes = m[2].split(/[,，]/).map(function (s) {
-            return s.trim().replace(/[^0-9]/g, '');
-          }).filter(function (s) { return s; });
-
-          if (classes.length) {
-            classes.forEach(function (clsNum) {
-              var padded = clsNum.length === 1 ? '0' + clsNum : clsNum;
-              entries.push(parseSheetId(base + padded));
-            });
-            continue;
-          }
-        }
-
-        entries.push(parseSheetId(line));
+        var arr = parseTOCLine(lines[i]);
+        for (var j = 0; j < arr.length; j++) entries.push(arr[j]);
       }
-
       state.tocEntries = entries;
       if (!entries.length) { tocPanel.hidden = true; return; }
       renderTOC(entries);
@@ -1751,6 +1793,13 @@
       return a.localeCompare(b, 'zh');
     });
     return subjects;
+  }
+
+  function tocLabel(e) {
+    var label = formatDate(e.date);
+    if (e.cls) label += ' ' + parseInt(e.cls, 10) + '班';
+    if (e.comment) label += '（' + e.comment + '）';
+    return label;
   }
 
   function renderTOC(entries) {
@@ -1774,11 +1823,8 @@
       list.forEach(function (e) {
         var btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'toc-item';
-
-        var label = formatDate(e.date);
-        if (e.cls) label += ' ' + parseInt(e.cls, 10) + '班';
-        btn.textContent = label;
-        btn.title = e.fullId || e.id;
+        btn.textContent = tocLabel(e);
+        btn.title = (e.fullId || e.id) + (e.comment ? (' · ' + e.comment) : '');
 
         btn.addEventListener('click', function () {
           var prev = tocList.querySelector('.toc-item.active');
@@ -2330,10 +2376,8 @@
       });
       html += '<div class="toc-group"><div class="toc-subject">' + esc(subj) + '（' + list.length + '）</div><div class="trend-checks">';
       list.forEach(function (e) {
-        var label = formatDate(e.date);
-        if (e.cls) label += ' ' + parseInt(e.cls, 10) + '班';
         html += '<label class="trend-check"><input type="checkbox" data-id="' + esc(e.fullId || e.id) + '" checked>' +
-          '<span>' + esc(label) + '</span><span class="t-id">' + esc(e.fullId || e.id) + '</span></label>';
+          '<span>' + esc(tocLabel(e)) + '</span><span class="t-id">' + esc(e.fullId || e.id) + '</span></label>';
       });
       html += '</div></div>';
     });
@@ -2358,7 +2402,6 @@
 
   function findStudentInRows(rows, name, fuzzy) {
     if (!rows || !rows.length) return null;
-    /* 用同样的方式找表头 */
     var headerRowIdx = -1;
     for (var hi = 0; hi < Math.min(rows.length, 20); hi++) {
       var hr = rows[hi];
@@ -2438,15 +2481,18 @@
       var sid = selected[idx];
       var entry = entriesMap[sid] || parseSheetId(sid);
       updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
-      fetchSheetRows(sid).then(function (got) {
+      fetchSheetRows(sid, !!entry.preferExcel).then(function (got) {
         try {
           var rec = findStudentInRows(got.rows, name, fuzzy);
           if (rec) {
             var label = formatDateShort(entry.date);
             if (entry.cls) label += ' ' + parseInt(entry.cls, 10) + '班';
-            results.push({ id: sid, date: entry.date, subject: entry.subject, cls: entry.cls,
-              label: label, fullLabel: formatDate(entry.date) + (entry.cls ? (' ' + parseInt(entry.cls, 10) + '班') : ''),
-              total: rec.total, rank: rec.rank, clsRank: rec.clsRank, recCls: rec.cls, absent: rec.absent });
+            results.push({
+              id: sid, date: entry.date, subject: entry.subject, cls: entry.cls,
+              label: label,
+              fullLabel: formatDate(entry.date) + (entry.cls ? (' ' + parseInt(entry.cls, 10) + '班') : ''),
+              total: rec.total, rank: rec.rank, clsRank: rec.clsRank, recCls: rec.cls, absent: rec.absent
+            });
           } else errors.push({ id: sid, msg: '未找到该学生' });
         } catch (e) { errors.push({ id: sid, msg: '解析失败' }); }
         idx++; updateProgress(idx, selected.length); next();
