@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCL2 下载功能修复工具</title>
+<style>
+  :root{
+    --bg:#0f1116; --panel:#171a21; --border:#2a2f3a; --text:#e6e9ef;
+    --muted:#8b93a7; --accent:#4c9aff; --green:#3ddc84; --red:#ff6b6b; --yellow:#ffcc66;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+  header{padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--border);
+         position:sticky;top:0;z-index:10}
+  h1{font-size:16px;margin:0 0 10px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tab{background:#2a3140;color:var(--text);border:1px solid var(--border);padding:6px 14px;
+       border-radius:6px;cursor:pointer;font-size:13px}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button{background:var(--accent);color:#fff;border:none;padding:7px 13px;border-radius:6px;
+         cursor:pointer;font-size:13px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.secondary{background:#2a3140}
+  button.small{padding:3px 8px;font-size:11.5px}
+  button.warn{background:#8a5a1a}
+  button.green{background:#1f7a4a}
+  select,input[type=text]{background:#0f1319;color:var(--text);border:1px solid var(--border);
+       border-radius:6px;padding:6px 9px;font-size:13px}
+  input[type=text]{min-width:240px;flex:1}
+  #progressWrap{height:6px;background:#0f1319;border-radius:3px;overflow:hidden;margin-top:10px;display:none}
+  #progressBar{height:100%;width:0;background:var(--accent);transition:width .15s}
+  #log{margin-top:8px;font-size:12px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;
+       white-space:pre-wrap;max-height:70px;overflow:auto}
+  main{padding:14px 18px 40px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+        padding:18px 20px;margin-bottom:16px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+  .card h3{font-size:13.5px;margin:16px 0 6px;color:var(--text)}
+  .card ol,.card ul{margin:6px 0;padding-left:22px}
+  .card li{margin:4px 0}
+  .card code{background:#0f1319;padding:1px 5px;border-radius:4px;font-size:12px;
+             font-family:ui-monospace,Menlo,monospace}
+  .card .hl{color:var(--yellow)}
+  .card .danger{color:var(--red)}
+  .stats{color:var(--muted);font-size:12px;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{border-bottom:1px solid var(--border);padding:7px 8px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:600;position:sticky;top:0}
+  tr:hover td{background:#1a1f29}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;white-space:nowrap}
+  .tag.release{background:#143d2a;color:var(--green)}
+  .tag.snapshot{background:#3d3114;color:var(--yellow)}
+  a{color:var(--accent);text-decoration:none;word-break:break-all}
+  a:hover{text-decoration:underline}
+  .url-cell{max-width:520px}
+  .muted{color:var(--muted)}
+  .err{color:var(--red)}
+  #tableWrap{overflow-x:auto}
+  .link-box{background:#0f1319;border:1px solid var(--border);border-radius:8px;
+            padding:12px 14px;margin:8px 0;font-family:ui-monospace,Menlo,monospace;
+            font-size:12.5px;word-break:break-all}
+  .link-box a{color:var(--green)}
+  .step-num{display:inline-block;background:var(--accent);color:#fff;border-radius:50%;
+            width:22px;height:22px;text-align:center;line-height:22px;font-size:12px;
+            font-weight:700;margin-right:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PCL2 下载功能修复工具</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="method1">法一：下载旧版 PCL2</button>
+    <button class="tab" data-tab="method2">法二：JSON 补全法</button>
+  </div>
+
+  <!-- 法一控制条 -->
+  <div class="row" id="m1Bar">
+    <button id="btnLocalPcl" class="green">下载根目录 pcl.zip</button>
+    <button id="btnGithubPcl" class="secondary">前往 GitHub 旧版发布页</button>
+    <span class="muted" style="font-size:12px">
+      根目录未放置 pcl.zip 时，请使用 GitHub 方式获取 2.14.0.0
+    </span>
+  </div>
+
+  <!-- 法二控制条 -->
+  <div class="row" id="m2Bar" style="display:none">
+    <button id="btnStart">获取正式版 JSON</button>
+    <button id="btnRetry" class="secondary" disabled>重试失败项</button>
+    <button id="btnZipAll" class="secondary" disabled>下载全部为 ZIP</button>
+    <label class="muted">范围
+      <select id="selScope">
+        <option value="release" selected>仅正式版</option>
+        <option value="release+snapshot">正式版 + 快照</option>
+      </select>
+    </label>
+    <label class="muted">并发
+      <select id="selConcurrency">
+        <option value="4">4</option>
+        <option value="6" selected>6</option>
+        <option value="8">8</option>
+      </select>
+    </label>
+    <input type="text" id="txtSearch" placeholder="搜索版本号，如 1.20 / 26.3">
+    <button id="btnURLs" class="secondary" disabled>导出 JSON URL 列表</button>
+  </div>
+
+  <div id="progressWrap"><div id="progressBar"></div></div>
+  <div id="log"></div>
+</header>
+
+<main>
+  <!-- ==================== 法一 ==================== -->
+  <section class="panel active" id="panel-method1">
+    <div class="card">
+      <h2>法一：下载旧版本 PCL2，恢复下载功能</h2>
+      <p>
+        2026 年 10 月 20 日，PCL2 更新到 <code>2.99.0.0</code>，
+        移除了 MC 下载与整合包安装功能[reference:0]。
+        最后一个功能完好的正式版是 <code>2.14.0.0</code>。
+        把旧版 exe 覆盖回去，并在启动后关闭自动更新，即可恢复下载。
+      </p>
+
+      <h3>获取旧版 PCL2</h3>
+      <p><b>方式 A（推荐）：直接使用本页面根目录的 pcl.zip</b></p>
+      <ol>
+        <li>点击上方 <code>下载根目录 pcl.zip</code>。</li>
+        <li>解压 <code>pcl.zip</code>，里面应该是旧版 PCL2 的文件（通常包含 <code>Plain Craft Launcher 2.exe</code>）。</li>
+        <li>跳过下面的 GitHub 步骤，直接看“替换与关闭更新”。</li>
+      </ol>
+      <p class="muted">
+        如果点击后提示文件不存在，说明根目录没有放 <code>pcl.zip</code>，
+        请使用方式 B，或自行把旧版 PCL2 的压缩包放到与这个 HTML 相同的目录下并命名为 <code>pcl.zip</code>。
+      </p>
+
+      <p><b>方式 B：从 GitHub Releases 获取 2.14.0.0</b></p>
+      <ol>
+        <li>打开 <a href="https://github.com/Meloong-Git/PCL/releases/tag/2.14.0.0" target="_blank" rel="noopener">
+          https://github.com/Meloong-Git/PCL/releases/tag/2.14.0.0</a>[reference:1]。</li>
+        <li>在页面底部的 <b>Assets</b> 区域，点击 <code>Source code (zip)</code> 下载源码压缩包[reference:2]。</li>
+        <li>解压后，找到里面的 <code>最新正式版.zip</code>，再次解压，得到 PCL2 的可执行文件[reference:3]。</li>
+      </ol>
+
+      <h3>替换与关闭更新（关键步骤）</h3>
+      <ol>
+        <li><span class="step-num">1</span> <b>先断网</b>（关闭 Wi-Fi / 拔掉网线）[reference:4]。</li>
+        <li><span class="step-num">2</span> 用旧版 PCL2 的 <code>Plain Craft Launcher 2.exe</code> 覆盖掉你原来被更新后的启动器文件[reference:5]。</li>
+        <li><span class="step-num">3</span> 在断网状态下打开 PCL2，进入 <b>设置 → 启动器 → 启动器更新</b>，选择 <b>关闭更新提示</b>，
+          弹窗点“我知道我在做什么”[reference:6]。</li>
+        <li><span class="step-num">4</span> 如果你担心“只关提示”拦不住强制更新，可以额外在 PCL 目录的 <code>Setup.ini</code> 中加入或修改：
+          <div class="link-box">SystemSystemUpdate=3</div>
+          保存后再联网[reference:7]。</li>
+        <li><span class="step-num">5</span> 联网，此时下载功能应该已经恢复。</li>
+      </ol>
+
+      <p class="danger">
+        <b>风险提示：</b>不要从任何第三方“修复版”“绿色版”网站下载 PCL，
+        已经有报告称第三方文件携带病毒[reference:8]。只从 GitHub 官方仓库或你自己确认可信的来源获取旧版。
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================== 法二 ==================== -->
+  <section class="panel" id="panel-method2">
+    <div class="card">
+      <h2>法二：JSON 补全法</h2>
+      <p>
+        如果暂时不想换回旧版 PCL2，可以用这个页面下载目标版本的
+        <b>版本 JSON</b>，打包成 <code>&lt;版本号&gt;/&lt;版本号&gt;.json</code> 的 ZIP。
+        解压到 <code>.minecraft/versions/</code> 后，PCL2 会把该文件夹识别为一个“不完整的版本”，
+        启动它时会触发补全，从 Mojang 官方源拉取缺失的 Jar 和库文件。
+      </p>
+      <ol>
+        <li>在下方表格中选择你要玩的版本，点击 <b>下载 ZIP</b>。</li>
+        <li>解压得到的 <code>.zip</code>，你会看到类似 <code>1.20.1/1.20.1.json</code> 的结构。</li>
+        <li>把整个 <code>1.20.1/</code> 文件夹放进 PCL2 的 <code>.minecraft/versions/</code> 目录。</li>
+        <li>打开 PCL2，在版本列表里应该能看到这个版本。直接启动它。</li>
+        <li>PCL2 检测到文件不全，会自动弹出补全提示，确认后开始从官方源下载缺失文件。</li>
+      </ol>
+      <p class="muted">
+        也可以点 <b>下载全部为 ZIP</b>，一次把所有正式版的 JSON 打包下载。
+      </p>
+    </div>
+
+    <div class="stats" id="stats">
+      点击“获取正式版 JSON”，从 Mojang 官方清单读取所有正式版的版本 JSON。
+    </div>
+    <div id="tableWrap"></div>
+  </section>
+</main>
+
+<script>
+/* ===================== 通用工具 ===================== */
+const MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
+const $ = id => document.getElementById(id);
+
+const logEl = $('log');
+const progressWrap = $('progressWrap');
+const progressBar = $('progressBar');
+
+function log(msg){
+  const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+  logEl.textContent += line;
+  if (logEl.textContent.length > 8000) logEl.textContent = logEl.textContent.slice(-5000);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function fetchText(url, {timeout=30000, retries=2}={}){
+  let lastErr;
+  for (let attempt=0; attempt<=retries; attempt++){
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), timeout);
+    try{
+      const res = await fetch(url, {signal: ctrl.signal});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.text();
+    }catch(e){
+      lastErr = e;
+      if (attempt < retries) await new Promise(r=>setTimeout(r, 400*(attempt+1)));
+    }finally{ clearTimeout(timer); }
+  }
+  throw lastErr;
+}
+
+async function runPool(items, limit, worker, onProgress){
+  let next=0, done=0;
+  const results = new Array(items.length);
+  async function lane(){
+    while(true){
+      const i = next++;
+      if (i >= items.length) return;
+      try{ results[i] = await worker(items[i], i); }
+      catch(e){ results[i] = {__error:(e&&e.message)||String(e)}; }
+      done++;
+      if (onProgress) onProgress(done, items.length);
+    }
+  }
+  const lanes=[];
+  for (let i=0;i<Math.min(limit, items.length);i++) lanes.push(lane());
+  await Promise.all(lanes);
+  return results;
+}
+
+function escHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtTime(s){
+  if (!s) return '';
+  const d = new Date(s);
+  if (isNaN(d)) return s;
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+
+/* ===================== 纯 JS 生成 ZIP（Store 无压缩） ===================== */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++){
+    let c = i;
+    for (let k = 0; k < 8; k++){
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++){
+    c = (c >>> 8) ^ CRC_TABLE[(c ^ bytes[i]) & 0xFF];
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function makeZip(files){
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+
+  const now = new Date();
+  const dosTime = ((now.getHours() & 0x1f) << 11) |
+                  ((now.getMinutes() & 0x3f) << 5) |
+                  ((now.getSeconds() >> 1) & 0x1f);
+  const dosDate = (((now.getFullYear() - 1980) & 0x7f) << 9) |
+                  (((now.getMonth() + 1) & 0x0f) << 5) |
+                  (now.getDate() & 0x1f);
+
+  for (const f of files){
+    const nameBytes = enc.encode(f.name);
+    const data = (f.data instanceof Uint8Array) ? f.data : enc.encode(String(f.data));
+    const crc = crc32(data);
+    const size = data.length;
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+
+    parts.push(local);
+    parts.push(data);
+
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    central.push(cd);
+
+    offset += local.length + data.length;
+  }
+
+  const centralStart = offset;
+  let centralSize = 0;
+  for (const c of central) centralSize += c.length;
+
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, centralStart, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...parts, ...central, eocd], {type: 'application/zip'});
+}
+
+/* ===================== Tab 切换 ===================== */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
+    const tab = btn.dataset.tab;
+    $('panel-method1').classList.toggle('active', tab === 'method1');
+    $('panel-method2').classList.toggle('active', tab === 'method2');
+    $('m1Bar').style.display = tab === 'method1' ? 'flex' : 'none';
+    $('m2Bar').style.display = tab === 'method2' ? 'flex' : 'none';
+  });
+});
+
+/* ===================== 法一：旧版下载按钮 ===================== */
+$('btnLocalPcl').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = 'pcl.zip';
+  a.download = 'pcl.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  log('尝试下载根目录 pcl.zip；如果浏览器报 404，说明文件未放置在 HTML 同目录。');
+});
+$('btnGithubPcl').addEventListener('click', () => {
+  window.open('https://github.com/Meloong-Git/PCL/releases/tag/2.14.0.0', '_blank', 'noopener');
+});
+
+/* ===================== 法二：JSON 清单与打包 ===================== */
+const state = { running:false, list:[], records:[], scope:'release' };
+
+const btnStart = $('btnStart'), btnRetry = $('btnRetry'), btnZipAll = $('btnZipAll');
+const btnURLs = $('btnURLs');
+const selScope = $('selScope'), selConcurrency = $('selConcurrency');
+const txtSearch = $('txtSearch');
+const statsEl = $('stats'), tableWrap = $('tableWrap');
+
+async function loadVersions(){
+  if (state.running) return;
+  state.running = true;
+  btnStart.disabled = true; btnRetry.disabled = true; btnZipAll.disabled = true;
+  btnURLs.disabled = true;
+  progressWrap.style.display = 'block'; progressBar.style.width = '0%';
+  logEl.textContent = ''; tableWrap.innerHTML = '';
+  state.records = []; state.list = [];
+  log('开始获取版本清单 ...');
+
+  try{
+    const manifestText = await fetchText(MANIFEST_URL, {retries:3});
+    const manifest = JSON.parse(manifestText);
+    const scope = selScope.value;
+    state.scope = scope;
+    const list = manifest.versions.filter(v =>
+      scope === 'release' ? v.type === 'release'
+                          : (v.type === 'release' || v.type === 'snapshot')
+    );
+    state.list = list;
+    log(`清单 OK：目标 ${list.length} 个版本（${scope === 'release' ? '仅正式版' : '正式版+快照'}）`);
+    statsEl.textContent = `共 ${list.length} 个版本，正在读取 JSON ...`;
+
+    const limit = parseInt(selConcurrency.value, 10) || 6;
+    const t0 = performance.now();
+    let lastLogged = 0;
+
+    const results = await runPool(list, limit, async v => {
+      const text = await fetchText(v.url);
+      return { v, text };
+    }, (done, total) => {
+      const pct = total ? Math.round(done/total*100) : 0;
+      progressBar.style.width = pct + '%';
+      if (done === total || done - lastLogged >= 20){
+        lastLogged = done;
+        log(`进度 ${done}/${total}（${pct}%）`);
+      }
+    });
+
+    state.records = results.map((r, i) => {
+      const v = list[i];
+      const base = {
+        id: v.id, type: v.type, releaseTime: v.releaseTime || v.time || '',
+        jsonUrl: v.url, jsonSha1: v.sha1 || '',
+        text: null, error: null
+      };
+      if (r && r.__error){ base.error = r.__error; return base; }
+      try{
+        JSON.parse(r.text);
+        base.text = r.text;
+      }catch(e){
+        base.error = 'JSON 解析失败：' + ((e && e.message) || e);
+      }
+      return base;
+    });
+
+    const ok = state.records.filter(r => !r.error).length;
+    const fail = state.records.length - ok;
+    log(`完成：成功 ${ok}，失败 ${fail}，用时 ${((performance.now()-t0)/1000).toFixed(1)}s`);
+    progressBar.style.width = '100%';
+
+    renderTable();
+    btnRetry.disabled = fail === 0;
+    btnZipAll.disabled = !state.records.some(r => r.text != null);
+    btnURLs.disabled = false;
+  }catch(e){
+    const msg = (e && e.message) || String(e);
+    log('出错：' + msg);
+    statsEl.textContent = '获取失败：' + msg;
+    alert('获取失败：' + msg + '\n\n可能是跨域或网络问题。可尝试：\n' +
+          '1) 换 Chrome / Edge 打开；\n' +
+          '2) 在本目录执行 python3 -m http.server 8000，再用 http://127.0.0.1:8000/ 打开；\n' +
+          '3) 确认能访问 piston-meta.mojang.com。');
+  }finally{
+    state.running = false;
+    btnStart.disabled = false;
+  }
+}
+
+async function retryFailed(){
+  if (state.running || !state.list.length) return;
+  const failedIdx = state.records.map((r,i) => r.error ? i : -1).filter(i => i >= 0);
+  if (!failedIdx.length) return;
+
+  state.running = true;
+  btnStart.disabled = true; btnRetry.disabled = true; btnZipAll.disabled = true;
+  progressWrap.style.display = 'block'; progressBar.style.width = '0%';
+  log(`重试 ${failedIdx.length} 个失败项 ...`);
+
+  try{
+    const limit = parseInt(selConcurrency.value, 10) || 6;
+    let done = 0;
+    await runPool(failedIdx, limit, async i => {
+      const v = state.list[i];
+      try{
+        const text = await fetchText(v.url);
+        JSON.parse(text);
+        state.records[i] = {
+          id: v.id, type: v.type, releaseTime: v.releaseTime || v.time || '',
+          jsonUrl: v.url, jsonSha1: v.sha1 || '',
+          text, error: null
+        };
+      }catch(e){
+        state.records[i].error = (e && e.message) || String(e);
+      }
+      done++;
+      progressBar.style.width = Math.round(done/failedIdx.length*100) + '%';
+    });
+    renderTable();
+    const still = state.records.filter(r => r.error).length;
+    log(`重试结束，仍失败 ${still} 个`);
+    btnRetry.disabled = still === 0;
+    btnZipAll.disabled = !state.records.some(r => r.text != null);
+  }finally{
+    state.running = false;
+    btnStart.disabled = false;
+  }
+}
+
+function getFiltered(){
+  const q = txtSearch.value.trim().toLowerCase();
+  if (!q) return state.records;
+  return state.records.filter(r => r.id.toLowerCase().includes(q));
+}
+
+function renderTable(){
+  const rows = getFiltered();
+  const ok = rows.filter(r => r.text != null).length;
+  const fail = state.records.filter(r => r.error).length;
+  statsEl.textContent =
+    `显示 ${rows.length} / ${state.records.length} 个版本 · 已缓存 JSON ${ok} 个` +
+    (fail ? ` · 失败 ${fail} 个（可点“重试失败项”）` : '');
+
+  if (!rows.length){ tableWrap.innerHTML = '<p class="muted">没有匹配的版本。</p>'; return; }
+
+  const out = [];
+  out.push('<table><thead><tr>');
+  out.push('<th>版本</th><th>类型</th><th>发布时间</th><th>版本 JSON（官方路径）</th><th>操作</th>');
+  out.push('</tr></thead><tbody>');
+
+  for (const r of rows){
+    out.push('<tr>');
+    out.push(`<td><b>${escHtml(r.id)}</b></td>`);
+    out.push(`<td><span class="tag ${r.type === 'release' ? 'release' : 'snapshot'}">${r.type === 'release' ? '正式版' : '快照'}</span></td>`);
+    out.push(`<td class="muted">${escHtml(fmtTime(r.releaseTime))}</td>`);
+    out.push('<td class="url-cell">');
+    out.push(`<a href="${escHtml(r.jsonUrl)}" target="_blank" rel="noopener">${escHtml(r.jsonUrl)}</a>`);
+    if (r.jsonSha1) out.push(`<br><span class="muted" style="font-family:monospace;font-size:11px">sha1: ${escHtml(r.jsonSha1.slice(0,16))}…</span>`);
+    out.push('</td>');
+    if (r.error){
+      out.push(`<td class="err">失败：${escHtml(r.error)}</td>`);
+    }else{
+      out.push(`<td><button class="small" data-zip-id="${escHtml(r.id)}">下载 ZIP</button></td>`);
+    }
+    out.push('</tr>');
+  }
+  out.push('</tbody></table>');
+  tableWrap.innerHTML = out.join('');
+
+  tableWrap.querySelectorAll('button[data-zip-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.zipId;
+      const rec = state.records.find(x => x.id === id);
+      if (!rec || rec.text == null){
+        alert('该版本的 JSON 尚未缓存，请先重试获取。');
+        return;
+      }
+      try{
+        downloadSingleZip(rec);
+      }catch(e){
+        alert('生成 ZIP 失败：' + ((e && e.message) || e));
+      }
+    });
+  });
+}
+
+function downloadSingleZip(rec){
+  const files = [{ name: `${rec.id}/${rec.id}.json`, data: rec.text }];
+  const blob = makeZip(files);
+  triggerDownload(blob, `${rec.id}.zip`);
+  log(`已打包 ${rec.id}.zip（内含 ${rec.id}/${rec.id}.json）`);
+}
+
+function downloadAllZip(){
+  const rows = getFiltered().filter(r => r.text != null);
+  if (!rows.length){
+    alert('当前没有可打包的 JSON。');
+    return;
+  }
+  try{
+    const files = rows.map(r => ({ name: `${r.id}/${r.id}.json`, data: r.text }));
+    const blob = makeZip(files);
+    const scopeName = state.scope === 'release' ? 'release' : 'release-snapshot';
+    triggerDownload(blob, `minecraft_${scopeName}_jsons.zip`);
+    log(`已打包 minecraft_${scopeName}_jsons.zip（${files.length} 个版本）`);
+  }catch(e){
+    alert('生成 ZIP 失败：' + ((e && e.message) || e));
+  }
+}
+
+function exportURLs(){
+  const rows = getFiltered();
+  const lines = rows.map(r => `${r.id}\t${r.jsonUrl}`);
+  triggerDownload(new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'}),
+                  'minecraft_version_json_urls.txt');
+}
+
+btnStart.addEventListener('click', loadVersions);
+btnRetry.addEventListener('click', retryFailed);
+btnZipAll.addEventListener('click', downloadAllZip);
+btnURLs.addEventListener('click', exportURLs);
+txtSearch.addEventListener('input', (() => {
+  let t; return () => { clearTimeout(t); t = setTimeout(renderTable, 150); };
+})());
+</script>
+</body>
+</html>
