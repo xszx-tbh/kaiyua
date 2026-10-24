@@ -1,29 +1,6 @@
 {
-  "count": 200,
+  "count": 201,
   "entries": [
-    {
-      "localTime": "Tue Oct 20 2026 21:48:51 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-10-20T13:48:51.414Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0",
-      "language": "zh-CN",
-      "languages": "zh-CN,en,en-GB,en-US",
-      "platform": "Win32",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 12,
-      "deviceMemory": 8,
-      "maxTouchPoints": 20,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "1280x720",
-      "availScreen": "1280x680",
-      "colorDepth": 24,
-      "pixelRatio": 0.75,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/fike",
-      "referrer": ""
-    },
     {
       "localTime": "Wed Oct 21 2026 21:45:29 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-21T13:45:29.314Z",
@@ -459,6 +436,29 @@
       "timezone": "Asia/Shanghai",
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/%E6%88%90%E7%BB%A9#",
+      "referrer": ""
+    },
+    {
+      "localTime": "Sat Oct 24 2026 17:27:09 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-24T09:27:09.915Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Mobile/15E148 Safari/604.1",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "430x932",
+      "availScreen": "430x932",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
     }
   ]
