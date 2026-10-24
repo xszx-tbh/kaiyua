@@ -1,29 +1,6 @@
 {
-  "count": 201,
+  "count": 202,
   "entries": [
-    {
-      "localTime": "Wed Oct 21 2026 21:45:29 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-10-21T13:45:29.314Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0",
-      "language": "zh-CN",
-      "languages": "zh-CN,en,en-GB,en-US",
-      "platform": "Win32",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 12,
-      "deviceMemory": 8,
-      "maxTouchPoints": 20,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "3840x2160",
-      "availScreen": "3840x2120",
-      "colorDepth": 24,
-      "pixelRatio": 0.3333333432674408,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": ""
-    },
     {
       "localTime": "Wed Oct 21 2026 22:08:17 GMT+0800 (中国标准时间)",
       "timestamp": "2026-10-21T14:08:17.466Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
+    },
+    {
+      "localTime": "Sat Oct 24 2026 21:31:12 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-10-24T13:31:12.790Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 16; 2311DRK48C Build/BP2A.250605.031.A3; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.189 Mobile Safari/537.36 XWEB/1500145 MMWEBSDK/20260901 MMWEBID/5960 REV/8bb09e872e59e0fd146f6d993eff881baacade68 MicroMessenger/8.0.78.3180(0x28004E3B) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64",
+      "language": "zh-CN",
+      "languages": "zh-CN,en-US",
+      "platform": "Linux aarch64",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 8,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "400x890",
+      "availScreen": "400x890",
+      "colorDepth": 24,
+      "pixelRatio": 3.049999952316284,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
