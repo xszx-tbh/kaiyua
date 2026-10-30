@@ -1,0 +1,2150 @@
+/* =========================================================
+   广州开元学校高一成绩查询 · app.js
+   （已修复：全卷总分 / 学校排名 / 缺考文本 / 中英文括号题目列）
+   ========================================================= */
+window.__APP_LOADED__ = true;
+
+(function () {
+  'use strict';
+
+  var state = {
+    sheet: null, label: '',
+    tocEntries: [], trendPoints: [],
+    idNameMap: null,
+    githubConfig: null,
+    adminMode: false,
+    chartView: { start: 0, end: 0 },
+    chartStudentName: '',
+    shortcuts: Object.create(null)
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var pageTitle      = $('pageTitle'),
+      dateInput      = $('dateInput'),
+      loadBtn        = $('loadBtn'),
+      loadMsg        = $('loadMsg'),
+      classPanel     = $('classPanel'),
+      classInput     = $('classInput'),
+      classBtn       = $('classBtn'),
+      classMsg       = $('classMsg'),
+      classStats     = $('classStats'),
+      classCharts    = $('classCharts'),
+      classListWrap  = $('classListWrap'),
+      gradeBlock     = $('gradeBlock'),
+      gradeChart     = $('gradeChart'),
+      gradeSub       = $('gradeSub'),
+      questionBlock  = $('questionBlock'),
+      questionChart  = $('questionChart'),
+      questionSub    = $('questionSub'),
+      studentBlock   = $('studentBlock'),
+      studentChart   = $('studentChart'),
+      studentSub     = $('studentSub'),
+      searchPanel    = $('searchPanel'),
+      searchLabel    = $('searchLabel'),
+      idRow          = $('idRow'),
+      idInput        = $('idInput'),
+      nameInput      = $('nameInput'),
+      searchBtn      = $('searchBtn'),
+      searchMsg      = $('searchMsg'),
+      resultEl       = $('result'),
+      pickFile       = $('pickFile'),
+      fileInput      = $('fileInput'),
+      noticeBody     = $('noticeBody'),
+      rawTableWrap   = $('rawTableWrap'),
+      tocPanel       = $('tocPanel'),
+      tocList        = $('tocList'),
+      tocMsg         = $('tocMsg'),
+      mainView       = $('mainView'),
+      trendView      = $('trendView'),
+      trendBtn       = $('trendBtn'),
+      backBtn        = $('backBtn'),
+      trendLabel     = $('trendLabel'),
+      trendIdRow     = $('trendIdRow'),
+      trendId        = $('trendId'),
+      trendName      = $('trendName'),
+      trendStartBtn  = $('trendStartBtn'),
+      trendMsg       = $('trendMsg'),
+      trendTOCList   = $('trendTOCList'),
+      selectAllBtn   = $('selectAllBtn'),
+      selectNoneBtn  = $('selectNoneBtn'),
+      progressPanel  = $('progressPanel'),
+      progressInner  = $('progressInner'),
+      progressText   = $('progressText'),
+      progressPct    = $('progressPct'),
+      trendResultPanel = $('trendResultPanel'),
+      chartTitle     = $('chartTitle'),
+      chartSub       = $('chartSub'),
+      chartWrap      = $('chartWrap'),
+      trendChart     = $('trendChart'),
+      zoomInBtn      = $('zoomInBtn'),
+      zoomOutBtn     = $('zoomOutBtn'),
+      zoomResetBtn   = $('zoomResetBtn'),
+      rangeInfo      = $('rangeInfo'),
+      trendStats     = $('trendStats'),
+      trendSummary   = $('trendSummary'),
+      adminBadge     = $('adminBadge'),
+      adminLogsRow   = $('adminLogsRow'),
+      adminLogsBtn   = $('adminLogsBtn'),
+      adminLogsView  = $('adminLogsView'),
+      logsBackBtn    = $('logsBackBtn'),
+      logsRefreshBtn = $('logsRefreshBtn'),
+      logsCountBox   = $('logsCountBox'),
+      logsMsg        = $('logsMsg'),
+      logsContent    = $('logsContent'),
+      toastWrap      = $('toastWrap');
+
+  /* ============ 提示框 ============ */
+  function showToast(title, message, type, duration) {
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'error');
+    var titleEl = document.createElement('div');
+    titleEl.className = 'toast-title';
+    var spanTitle = document.createElement('span');
+    spanTitle.textContent = title;
+    var closeBtn = document.createElement('span');
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', function () { removeToast(el); });
+    titleEl.appendChild(spanTitle); titleEl.appendChild(closeBtn);
+    var bodyEl = document.createElement('div');
+    bodyEl.className = 'toast-body';
+    bodyEl.textContent = message || '';
+    el.appendChild(titleEl); el.appendChild(bodyEl);
+    toastWrap.appendChild(el);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { el.classList.add('show'); });
+    });
+    var timer = setTimeout(function () { removeToast(el); }, duration || 6000);
+    el._timer = timer;
+    return el;
+  }
+  function removeToast(el) {
+    if (!el || !el.parentNode) return;
+    if (el._timer) { clearTimeout(el._timer); el._timer = null; }
+    el.classList.remove('show');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+  }
+
+  /* ============ 错误翻译 ============ */
+  function translateError(err) {
+    if (!err) return '未知错误';
+    var msg = (err && err.message) ? String(err.message) : String(err);
+    if (!msg) return '未知错误';
+    if (/[\u4e00-\u9fa5]/.test(msg)) return msg;
+    if (/Failed to fetch|Load failed|Failed to load/i.test(msg)) return '网络请求失败（可能是网络问题、跨域限制或文件不存在）';
+    if (/NetworkError|Network error|network request failed/i.test(msg)) return '网络连接错误';
+    if (/TypeError/i.test(msg)) return '请求失败（可能是网络或跨域问题）';
+    if (/AbortError/i.test(msg)) return '请求被中断';
+    if (/CORS|cross-origin/i.test(msg)) return '跨域请求被拒绝（服务器未允许本站访问）';
+    if (/timeout/i.test(msg)) return '请求超时';
+    if (/Not allowed to load local resource/i.test(msg)) return '浏览器禁止直接读取本地文件';
+    if (/permission|could not be read|not be read/i.test(msg)) return '浏览器已撤销对该文件的访问权限';
+    if (/Invalid HTML|could not find.*table/i.test(msg)) return '文件内容无法识别（可能是文件不存在或格式不正确）';
+    var m = msg.match(/HTTP\s+(\d+)/i);
+    if (m) {
+      var map = { '400':'请求参数错误','401':'身份验证失败（令牌无效）','403':'访问被拒绝（权限不足或跨域）','404':'未找到资源','405':'请求方法不被允许','409':'文件冲突（可能有并发写入）','408':'请求超时','422':'数据格式错误','429':'请求过于频繁','500':'服务器内部错误','502':'网关错误','503':'服务暂不可用','504':'网关超时' };
+      return map[m[1]] || ('服务器返回错误 ' + m[1]);
+    }
+    return msg;
+  }
+
+  /* ============ 学科映射 ============ */
+  var SUBJECT_MAP = {
+    yw:'语文', sx:'数学', yy:'英语', wl:'物理', hx:'化学', sw:'生物',
+    zz:'政治', ls:'历史', dl:'地理', xx:'信息技术', tj:'通用技术',
+    ty:'体育', yj:'音乐', ms:'美术', js:'计算机'
+  };
+  var SUBJECT_ORDER = ['语文','数学','英语','物理','化学','生物','政治','历史','地理','信息技术','通用技术','体育','音乐','美术','计算机'];
+
+  function parseSheetId(id) {
+    var raw = String(id).trim().replace(/\.[A-Za-z0-9]{1,6}$/, '');
+    var m = raw.match(/^([A-Za-z]*)(\d+)$/);
+    if (!m) return { id: raw, prefix:'', date: raw, subject:'其他', cls:'', fullId: raw };
+    var prefix = (m[1] || '').toLowerCase();
+    var digits = m[2];
+    var date = digits, cls = '';
+    if (digits.length === 10) { date = digits.slice(0,8); cls = digits.slice(8); }
+    var subject = !prefix ? '数学' : (SUBJECT_MAP[prefix] || ('其他(' + prefix.toUpperCase() + ')'));
+    return { id: raw, prefix: prefix, date: date, subject: subject, cls: cls, fullId: raw };
+  }
+  function formatDate(d) {
+    if (d && d.length === 8 && /^\d+$/.test(d))
+      return d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8);
+    return d;
+  }
+  function formatDateShort(d) {
+    if (d && d.length === 8 && /^\d+$/.test(d))
+      return d.slice(4,6) + '-' + d.slice(6,8);
+    return d;
+  }
+
+  /* ============ 基础工具 ============ */
+  function setMsg(el, text, type) {
+    el.textContent = text || '';
+    el.className = 'msg' + (type ? ' ' + type : '');
+  }
+  function toNum(v) {
+    if (v === undefined || v === null) return 0;
+    var s = String(v).trim();
+    if (s === '' || s === '零' || s === '#' || s === '-') return 0;
+    var n = Number(s);
+    return isFinite(n) ? n : 0;
+  }
+  function cleanRank(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    if (!/^\d+(?:\.\d+)?$/.test(s)) return '';
+    var n = parseFloat(s);
+    if (!isFinite(n) || n <= 0) return '';
+    return String(Math.round(n));
+  }
+  function isAbsentText(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return false;
+    if (s === '0' || s === '否' || s === '正常' || /^false$/i.test(s)) return false;
+    return !/[\d.]/.test(s);
+  }
+  function fmt(n) {
+    if (!isFinite(n)) return '0';
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+  }
+  function fmt1(n) { return (!isFinite(n) ? '0' : (Math.round(n * 10) / 10).toFixed(1)); }
+  function fmt2(n) { return (!isFinite(n) ? '0' : (Math.round(n * 100) / 100).toFixed(2)); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function sanitizeFileName(s) {
+    return String(s == null ? '' : s).trim()
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+      .replace(/\s+/g, '')
+      .replace(/\.+$/, '');
+  }
+  var CN = { '一':'1','二':'2','三':'3','四':'4','五':'5','六':'6','七':'7','八':'8','九':'9','十':'10' };
+  function cnToNum(m) {
+    if (!m) return '';
+    if (m.length === 1) return CN[m] || m;
+    if (/^十[一二三四五六七八九]$/.test(m)) return '1' + CN[m[1]];
+    if (/^[一二三四五六七八九]十$/.test(m)) return CN[m[0]] + '0';
+    if (/^[一二三四五六七八九]十[一二三四五六七八九]$/.test(m)) return CN[m[0]] + CN[m[2]];
+    return m;
+  }
+  function normalizeClass(s) {
+    return String(s == null ? '' : s).trim().replace(/\s/g, '')
+      .replace(/班$/g, '')
+      .replace(/[一二三四五六七八九十]+/g, cnToNum);
+  }
+
+  /* ============ 路径与解码 ============ */
+  function sheetURL(fileName) {
+    var href = document.baseURI || location.href;
+    href = href.replace(/[?#].*$/, '');
+    if (!/\/$/.test(href)) href = href.replace(/[^/]*$/, '');
+    return href + encodeURIComponent(fileName);
+  }
+  function decodeBuffer(buf) {
+    var bytes = new Uint8Array(buf);
+    var offset = 0;
+    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) offset = 3;
+    var text = '';
+    try { text = new TextDecoder('utf-8', { fatal:false }).decode(bytes.subarray(offset)); }
+    catch (e) { text = ''; }
+    var bad = (text.match(/\uFFFD/g) || []).length;
+    if (bad > 0) {
+      try {
+        var alt = new TextDecoder('gbk', { fatal:false }).decode(bytes.subarray(offset));
+        if ((alt.match(/\uFFFD/g) || []).length < bad) return alt;
+      } catch (e2) {}
+    }
+    return text;
+  }
+  function fetchText(url) {
+    return fetch(url, { cache:'no-store', credentials:'same-origin' }).then(function (res) {
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      var ct = (res.headers.get('content-type') || '').toLowerCase();
+      return res.arrayBuffer().then(function (buf) {
+        var text = decodeBuffer(buf);
+        if (ct.indexOf('text/html') > -1 || /^\s*<(!doctype|html)/i.test(text)) {
+          var e2 = new Error('NOT_FOUND_AS_HTML'); e2.code = 'HTML_FALLBACK'; throw e2;
+        }
+        return text;
+      });
+    });
+  }
+  function fetchBuffer(url) {
+    return fetch(url, { cache:'no-store', credentials:'same-origin' }).then(function (res) {
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      var ct = (res.headers.get('content-type') || '').toLowerCase();
+      return res.arrayBuffer().then(function (buf) {
+        if (ct.indexOf('text/html') > -1) {
+          var head = new TextDecoder('utf-8', { fatal:false }).decode(new Uint8Array(buf).subarray(0, 300));
+          if (/^\s*<(!doctype|html)/i.test(head)) {
+            var e = new Error('NOT_FOUND_AS_HTML'); e.status = 404; e.code = 'HTML_FALLBACK'; throw e;
+          }
+        }
+        return buf;
+      });
+    });
+  }
+
+  /* ============ SheetJS 按需加载 ============ */
+  var xlsxStatus = 'none', xlsxCallbacks = [];
+  function ensureXLSX(cb) {
+    if (typeof XLSX !== 'undefined') { cb(true); return; }
+    if (xlsxStatus === 'ready') { cb(true); return; }
+    if (xlsxStatus === 'failed') { cb(false); return; }
+    xlsxCallbacks.push(cb);
+    if (xlsxStatus === 'loading') return;
+    xlsxStatus = 'loading';
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = function () {
+      xlsxStatus = 'ready';
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
+      cbs.forEach(function (f) { f(true); });
+    };
+    s.onerror = function () {
+      xlsxStatus = 'failed';
+      var cbs = xlsxCallbacks.slice(); xlsxCallbacks.length = 0;
+      cbs.forEach(function (f) { f(false); });
+    };
+    document.head.appendChild(s);
+  }
+  function parseBufferToRows(buf, fileName) {
+    var extMatch = fileName.match(/\.([^.]+)$/);
+    var ext = extMatch ? extMatch[1].toLowerCase() : '';
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm' || ext === 'xlsb') {
+      return new Promise(function (resolve, reject) {
+        ensureXLSX(function (ok) {
+          if (!ok) { reject(new Error('无法加载 Excel 解析库（需联网）')); return; }
+          try {
+            var bytes = new Uint8Array(buf);
+            var wb = XLSX.read(bytes, { type:'array' });
+            if (!wb.SheetNames.length) { reject(new Error('工作簿中没有工作表。')); return; }
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false });
+            var rows = raw.map(function (row) {
+              return row.map(function (cell) { return cell == null ? '' : String(cell).trim(); });
+            }).filter(function (row) { return row.some(function (c) { return c !== ''; }); });
+            resolve(rows);
+          } catch (e) { reject(e); }
+        });
+      });
+    }
+    var text = decodeBuffer(buf);
+    if (/^\s*<(!doctype|html)/i.test(text)) {
+      var e = new Error('NOT_FOUND_AS_HTML'); e.code = 'HTML_FALLBACK';
+      return Promise.reject(e);
+    }
+    return Promise.resolve(parseCSV(text));
+  }
+  function fetchSheetRows(inputName, preferExcel) {
+    var base = inputName;
+    var hasExt = /\.[A-Za-z0-9]{1,6}$/.test(base);
+    var textExts = ['.txt', '.csv'];
+    var excelExts = ['.xlsx', '.xls', '.xlsm', '.xlsb'];
+    var orderedExts = preferExcel ? excelExts.concat(textExts) : textExts.concat(excelExts);
+    var candidates = hasExt ? [base] : orderedExts.map(function (ext) { return base + ext; });
+    var last = null;
+    var allNotFound = true;
+    function isNotFound(err) {
+      if (!err) return true;
+      if (err.status === 404) return true;
+      if (err.code === 'HTML_FALLBACK') return true;
+      if (err.code === 'NOT_FOUND') return true;
+      return false;
+    }
+    function tryNext(i) {
+      if (i >= candidates.length) {
+        if (allNotFound || !last) {
+          var e = new Error('未找到成绩单 ' + base + '（已尝试 ' + orderedExts.join(' / ') + '），请检查文件名是否正确');
+          e.code = 'NOT_FOUND';
+          return Promise.reject(e);
+        }
+        return Promise.reject(last);
+      }
+      var fileName = candidates[i];
+      var url = sheetURL(fileName);
+      return fetchBuffer(url).then(function (buf) {
+        return parseBufferToRows(buf, fileName).then(function (rows) {
+          return { rows: rows, fileName: fileName, url: url };
+        });
+      }).catch(function (err) {
+        err.url = url; err.fileName = fileName;
+        if (!isNotFound(err)) allNotFound = false;
+        last = err;
+        return tryNext(i + 1);
+      });
+    }
+    return tryNext(0);
+  }
+
+  /* ============ 公告 ============ */
+  function loadNotice() {
+    noticeBody.classList.remove('fail');
+    noticeBody.classList.add('loading');
+    noticeBody.textContent = '公告加载中…';
+    fetchText(sheetURL('gg.txt')).then(function (text) {
+      var t = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/[ \t]+$/gm, '').trim();
+      noticeBody.classList.remove('loading');
+      if (!t) { noticeBody.classList.add('fail'); noticeBody.textContent = '公告获取失败'; return; }
+      noticeBody.textContent = t;
+    }).catch(function () {
+      noticeBody.classList.remove('loading');
+      noticeBody.classList.add('fail');
+      noticeBody.textContent = '公告获取失败';
+    });
+  }
+
+  /* ============ wy.txt 快捷跳转 ============ */
+  function loadShortcuts() {
+    return fetchText(sheetURL('wy.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var map = Object.create(null);
+      for (var i = 0; i < lines.length; i++) {
+        var raw = lines[i];
+        if (i === 0 && raw) raw = raw.replace(/^\uFEFF/, '');
+        var line = raw.trim();
+        if (!line || line.charAt(0) === '#') continue;
+        var m = line.match(/^(\S+)\s+(.+)$/);
+        if (!m) continue;
+        var key = m[1], url = m[2].trim();
+        if (!key || !url) continue;
+        map[key] = url;
+      }
+      state.shortcuts = map;
+    }).catch(function () { state.shortcuts = Object.create(null); });
+  }
+  function normalizeURL(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(u)) return u;
+    if (u.indexOf('//') === 0) return 'https:' + u;
+    return 'https://' + u;
+  }
+  function checkShortcut(rawInput) {
+    var key = String(rawInput || '').trim();
+    if (!key) return false;
+    if (!state.shortcuts) return false;
+    if (!Object.prototype.hasOwnProperty.call(state.shortcuts, key)) return false;
+    var target = normalizeURL(state.shortcuts[key]);
+    if (!target) return false;
+    setMsg(loadMsg, '正在新窗口打开：' + target, 'ok');
+    var w = window.open(target, '_blank', 'noopener,noreferrer');
+    if (!w) { setMsg(loadMsg, '新窗口被浏览器拦截，请允许本站弹出窗口后重试。', 'error'); return true; }
+    setTimeout(function () {
+      if (loadMsg.textContent.indexOf('正在新窗口打开') === 0) setMsg(loadMsg, '', '');
+    }, 2200);
+    return true;
+  }
+
+  /* ============ GitHub 配置 ============ */
+  function loadGithubConfig() {
+    return Promise.all([
+      fetchText(sheetURL('glp.txt')).catch(function () { return null; }),
+      fetchText(sheetURL('用户名.txt')).catch(function () { return null; })
+    ]).then(function (results) {
+      var tokenText = results[0], nameText = results[1];
+      if (tokenText == null || nameText == null) throw new Error('配置文件缺失（glp.txt 或 用户名.txt）');
+      var lines1 = String(tokenText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var rawToken = (lines1[0] || '').replace(/^\uFEFF/, '').trim();
+      if (!rawToken) throw new Error('glp.txt 为空');
+      var token = /^github_pat_/.test(rawToken) ? rawToken : ('github_pat_' + rawToken);
+      var lines2 = String(nameText).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      if (lines2[0]) lines2[0] = lines2[0].replace(/^\uFEFF/, '');
+      var owner = (lines2[0] || '').trim();
+      var repo = (lines2[1] || '').trim();
+      var branch = (lines2[2] || '').trim() || 'main';
+      if (repo && repo.indexOf('/') > -1) {
+        var sp = repo.split('/');
+        owner = sp[0].trim();
+        repo = sp.slice(1).join('/').trim();
+      }
+      if (!owner) throw new Error('用户名.txt 第一行（用户名）为空');
+      if (!repo) throw new Error('用户名.txt 第二行（仓库名）为空');
+      state.githubConfig = { token: token, owner: owner, repo: repo, branch: branch };
+    });
+  }
+
+  function b64EncodeUTF8(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function b64DecodeUTF8(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, '')))); }
+
+  var LOG_FILE = '日记.txt';
+  var LOG_MAX_ENTRIES = 20;
+
+  function ghReadFile(path) {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
+    var cfg = state.githubConfig;
+    var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo +
+              '/contents/' + encodeURIComponent(path) + '?ref=' + encodeURIComponent(cfg.branch) +
+              '&_t=' + Date.now();
+    return fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Authorization': 'Bearer ' + cfg.token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    }).then(function (res) {
+      if (res.status === 404) return { content: '', sha: null };
+      if (!res.ok) { var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      return res.json().then(function (data) {
+        var content = '';
+        if (data && data.content) {
+          try { content = b64DecodeUTF8(data.content); } catch (e) { content = ''; }
+        }
+        return { content: content, sha: data ? data.sha : null };
+      });
+    });
+  }
+  function ghWriteFile(path, content, sha, message) {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌'));
+    var cfg = state.githubConfig;
+    var url = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo +
+              '/contents/' + encodeURIComponent(path);
+    var body = { message: message || ('更新 ' + path), content: b64EncodeUTF8(content), branch: cfg.branch };
+    if (sha) body.sha = sha;
+    return fetch(url, {
+      method: 'PUT',
+      cache: 'no-store',
+      headers: {
+        'Authorization': 'Bearer ' + cfg.token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          var e = new Error('HTTP ' + res.status + (t ? ' - ' + t.slice(0, 200) : ''));
+          e.status = res.status;
+          throw e;
+        });
+      }
+      return res.json();
+    });
+  }
+  function parseLogContent(text) {
+    if (!text || !String(text).trim()) return { count: 0, entries: [] };
+    var trimmed = String(text).trim();
+    if (trimmed.charAt(0) === '{') {
+      try {
+        var obj = JSON.parse(trimmed);
+        if (obj && typeof obj === 'object') {
+          if (Array.isArray(obj.entries)) {
+            return { count: (typeof obj.count === 'number') ? obj.count : obj.entries.length, entries: obj.entries.slice() };
+          }
+          return { count: 1, entries: [obj] };
+        }
+      } catch (e) {}
+    }
+    var lines = trimmed.split('\n');
+    var entries = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try {
+        var o = JSON.parse(line);
+        if (o && typeof o === 'object') entries.push(o);
+      } catch (e) {}
+    }
+    return { count: entries.length, entries: entries };
+  }
+  function serializeLogContent(data) {
+    var entries = (data.entries || []).slice();
+    if (entries.length > LOG_MAX_ENTRIES) entries = entries.slice(entries.length - LOG_MAX_ENTRIES);
+    return JSON.stringify({
+      count: (typeof data.count === 'number') ? data.count : entries.length,
+      entries: entries
+    }, null, 2);
+  }
+  function ghAppendLog(entry) {
+    var MAX_RETRIES = 5, BASE_DELAY = 500;
+    function attempt(retriesLeft) {
+      return ghReadFile(LOG_FILE).then(function (r) {
+        var data = parseLogContent(r.content || '');
+        data.count = (typeof data.count === 'number' ? data.count : data.entries.length) + 1;
+        data.entries.push(entry);
+        if (data.entries.length > LOG_MAX_ENTRIES) data.entries = data.entries.slice(data.entries.length - LOG_MAX_ENTRIES);
+        var newContent = serializeLogContent(data);
+        return ghWriteFile(LOG_FILE, newContent, r.sha, 'add visit log (#' + data.count + ')');
+      }).catch(function (e) {
+        var msg = (e && e.message) ? String(e.message) : '';
+        var shouldRetry = /HTTP\s+409/.test(msg) || /does not match/.test(msg) || /sha/i.test(msg) || /HTTP\s+5\d\d/.test(msg);
+        if (retriesLeft > 0 && shouldRetry) {
+          var delay = BASE_DELAY * Math.pow(2, MAX_RETRIES - retriesLeft);
+          return new Promise(function (resolve) { setTimeout(resolve, delay); }).then(function () { return attempt(retriesLeft - 1); });
+        }
+        throw e;
+      });
+    }
+    return attempt(MAX_RETRIES);
+  }
+
+  function collectDeviceInfo() {
+    var nav = navigator, scr = window.screen;
+    var info = {
+      localTime: new Date().toString(), timestamp: new Date().toISOString(), ip: '',
+      userAgent: nav.userAgent || '', language: nav.language || '', languages: (nav.languages || []).join(','),
+      platform: nav.platform || '', vendor: nav.vendor || '',
+      hardwareConcurrency: nav.hardwareConcurrency || 0,
+      deviceMemory: (typeof nav.deviceMemory === 'number') ? nav.deviceMemory : null,
+      maxTouchPoints: nav.maxTouchPoints || 0, cookieEnabled: !!nav.cookieEnabled, onLine: !!nav.onLine,
+      screen: scr ? (scr.width + 'x' + scr.height) : '',
+      availScreen: scr ? (scr.availWidth + 'x' + scr.availHeight) : '',
+      colorDepth: scr ? scr.colorDepth : 0, pixelRatio: window.devicePixelRatio || 1,
+      timezone: '', timezoneOffset: new Date().getTimezoneOffset(),
+      pageUrl: location.href, referrer: document.referrer || ''
+    };
+    try { info.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    return info;
+  }
+  function fetchIP() {
+    return fetch('https://api.ipify.org?format=json', { cache:'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return d && d.ip ? d.ip : ''; })
+      .catch(function () { return ''; });
+  }
+  function uploadVisitInfo() {
+    if (!state.githubConfig) return Promise.reject(new Error('未配置 GitHub 令牌或用户名'));
+    return fetchIP().then(function (ip) {
+      var info = collectDeviceInfo();
+      info.ip = ip;
+      return ghAppendLog(info);
+    });
+  }
+
+  /* ============ 考号名字库 ============ */
+  function applyIdNameState() {
+    if (state.adminMode) {
+      idRow.style.display = 'none';
+      trendIdRow.style.display = 'none';
+      searchLabel.textContent = '姓名（支持模糊搜索）';
+      trendLabel.textContent  = '姓名（支持模糊搜索）';
+      nameInput.placeholder  = '如 张三';
+      trendName.placeholder  = '如 张三';
+      adminBadge.style.display = '';
+      adminLogsRow.hidden = false;
+      return;
+    }
+    adminBadge.style.display = 'none';
+    adminLogsRow.hidden = true;
+    var has = !!state.idNameMap;
+    idRow.style.display = has ? '' : 'none';
+    trendIdRow.style.display = has ? '' : 'none';
+    searchLabel.textContent = has ? '姓名与考号（需完整匹配）' : '姓名（需完整输入）';
+    trendLabel.textContent  = has ? '姓名与考号（需完整匹配）' : '姓名（需完整输入）';
+    nameInput.placeholder  = has ? '姓名' : '如 张三';
+    trendName.placeholder  = has ? '姓名' : '如 张三';
+  }
+  function loadIdName() {
+    return fetchText(sheetURL('考号名字.txt')).then(function (text) {
+      var rows = parseCSV(text);
+      if (!rows.length) throw new Error('空文件');
+      var header = rows[0];
+      var idIdx = -1, nameIdx = -1;
+      for (var i = 0; i < header.length; i++) {
+        var h = String(header[i] || '').replace(/^\uFEFF/, '').trim();
+        if (h === '考号' && idIdx === -1) idIdx = i;
+        if (h === '姓名' && nameIdx === -1) nameIdx = i;
+      }
+      if (idIdx === -1 || nameIdx === -1) throw new Error('未找到“考号/姓名”列');
+      var map = Object.create(null);
+      for (var j = 1; j < rows.length; j++) {
+        var r = rows[j]; if (!r) continue;
+        var id = String(r[idIdx] == null ? '' : r[idIdx]).trim();
+        var nm = String(r[nameIdx] == null ? '' : r[nameIdx]).trim();
+        if (id && nm) map[id] = nm;
+      }
+      if (!Object.keys(map).length) throw new Error('无有效数据');
+      state.idNameMap = map;
+    }).catch(function () { state.idNameMap = null; }).then(function () { applyIdNameState(); });
+  }
+  function validateIdName(id, name) {
+    if (state.adminMode) return null;
+    if (!state.idNameMap) return null;
+    if (!id) return '请输入考号。';
+    var expected = state.idNameMap[id];
+    if (!expected) return '未找到考号“' + id + '”，请检查后重试。';
+    if (expected !== name) return '考号与姓名不匹配，请检查后重试。';
+    return null;
+  }
+
+  /* ============ 管理员 ============ */
+  function tryAdminLogin(pwd) {
+    return fetchText(sheetURL('mm.txt')).then(function (text) {
+      if (pwd === String(text).trim()) {
+        state.adminMode = true;
+        applyIdNameState();
+        dateInput.value = '';
+        setMsg(loadMsg, '管理员模式已启用。', 'ok');
+        return true;
+      }
+      return false;
+    }).catch(function () { return false; });
+  }
+  var titleClickCount = 0, titleClickTimer = null;
+  pageTitle.addEventListener('click', function () {
+    if (!state.adminMode) return;
+    titleClickCount++;
+    if (titleClickTimer) clearTimeout(titleClickTimer);
+    titleClickTimer = setTimeout(function () { titleClickCount = 0; titleClickTimer = null; }, 800);
+    if (titleClickCount >= 3) {
+      titleClickCount = 0;
+      if (titleClickTimer) { clearTimeout(titleClickTimer); titleClickTimer = null; }
+      location.href = 'file.html';
+    }
+  });
+
+  /* ============ CSV 解析 ============ */
+  function splitLine(line) {
+    var out = [], cur = '', inQ = false, i, c;
+    for (i = 0; i < line.length; i++) {
+      c = line[i];
+      if (inQ) {
+        if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+        else cur += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ',') { out.push(cur); cur = ''; }
+        else cur += c;
+      }
+    }
+    out.push(cur);
+    return out.map(function (s) { return s.trim(); });
+  }
+  function parseCSV(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    var rows = [], lines = text.split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue;
+      rows.push(splitLine(lines[i]));
+    }
+    return rows;
+  }
+  function findCol(header, keyword) {
+    for (var i = 0; i < header.length; i++) if (header[i].indexOf(keyword) > -1) return i;
+    return -1;
+  }
+
+  /* ============ 列名集合（关键修复） ============ */
+  var RANK_NAMES     = ['年级排名', '学校排名', '校排名', '总排名', '全级排名', '排名'];
+  var CLS_RANK_NAMES = ['班级排名', '班排名', '班级名次'];
+  var ABSENT_NAMES   = ['缺考', '是否缺考', '缺考标记', '缺考状态'];
+  var TOTAL_NAMES    = ['科目总分', '全卷', '卷面总分', '卷面分', '总分', '总成绩', '首次得分', '最新得分', '合计', '得分'];
+  var OBJ_NAMES      = ['客观分', '客观题', '客观题得分', '客观'];
+  var SUB_NAMES      = ['主观分', '主观题', '主观题得分', '主观'];
+  var STUD_ID_NAMES  = ['学号', '考号', '考生号'];
+
+  function pickIndex(header, names, current) {
+    if (current !== -1) return current;
+    for (var n = 0; n < names.length; n++) {
+      var idx = header.indexOf(names[n]);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
+  /* ============ 构建成绩单 ============ */
+  function buildSheet(rows, fileNameHint) {
+    if (!rows.length) throw new Error('文件内容为空。');
+
+    var headerRowIdx = -1;
+    for (var hi = 0; hi < Math.min(rows.length, 20); hi++) {
+      var hr = rows[hi];
+      if (!hr) continue;
+      for (var hj = 0; hj < hr.length; hj++) {
+        if (String(hr[hj] == null ? '' : hr[hj]).replace(/^\uFEFF/, '').trim() === '姓名') {
+          headerRowIdx = hi; break;
+        }
+      }
+      if (headerRowIdx >= 0) break;
+    }
+    if (headerRowIdx < 0) throw new Error('文件中没有找到“姓名”列。');
+
+    var header = rows[headerRowIdx].map(function (h) {
+      return String(h == null ? '' : h).replace(/^\uFEFF/, '').trim();
+    });
+
+    var col = {
+      name: -1, rank: -1, clsRank: -1, cls: -1, absent: -1,
+      total: -1, obj: -1, sub: -1, stuId: -1
+    };
+
+    header.forEach(function (h, i) {
+      if (h === '姓名' && col.name === -1) col.name = i;
+      if (h === '班级' && col.cls === -1) col.cls = i;
+    });
+    col.rank    = pickIndex(header, RANK_NAMES, col.rank);
+    col.clsRank = pickIndex(header, CLS_RANK_NAMES, col.clsRank);
+    col.absent  = pickIndex(header, ABSENT_NAMES, col.absent);
+    col.total   = pickIndex(header, TOTAL_NAMES, col.total);
+    col.obj     = pickIndex(header, OBJ_NAMES, col.obj);
+    col.sub     = pickIndex(header, SUB_NAMES, col.sub);
+    col.stuId   = pickIndex(header, STUD_ID_NAMES, col.stuId);
+
+    if (col.name === -1) throw new Error('文件中没有找到“姓名”列。');
+
+    var ENGLISH_FULL_MAP = {
+      '阅读理解': 37.5, '七选五': 12.5, '完型': 15,
+      '语填': 15, '单词拼写': 10, '翻译句子': 15
+    };
+
+    var questions = [];
+    var isEnglish = false;
+
+    /* 题目列匹配：兼容中英文括号与“分”后缀 */
+    header.forEach(function (h, i) {
+      if (ENGLISH_FULL_MAP[h] !== undefined) {
+        isEnglish = true;
+        questions.push({ name: h, full: ENGLISH_FULL_MAP[h], scoreIdx: i, ansIdx: null });
+        return;
+      }
+      var m = h.match(/^(.+?)\s*[(（]\s*([\d.]+)[^)）]*分\s*[)）]$/);
+      if (!m) return;
+      var qFull = parseFloat(m[2]);
+      if (!isFinite(qFull)) return;
+      var q = { name: m[1].trim(), full: qFull, scoreIdx: i, ansIdx: null };
+      if (header[i + 1] === '作答选项') q.ansIdx = i + 1;
+      questions.push(q);
+    });
+
+    if (!questions.length && col.total === -1) throw new Error('文件中没有找到题目得分列或总分列。');
+
+    var hintCls = '';
+    if (fileNameHint) {
+      var fm = String(fileNameHint).match(/^\D*(\d{8})(\d{2})(?:\.[A-Za-z0-9]+)?$/);
+      if (fm) hintCls = fm[2];
+    }
+
+    var records = [];
+    for (var i = headerRowIdx + 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r) continue;
+      var name = (r[col.name] || '').trim();
+      if (!name) continue;
+
+      var clsName = col.cls !== -1 ? (r[col.cls] || '').trim() : '';
+      if (!clsName && hintCls) clsName = parseInt(hintCls, 10) + '班';
+
+      var details = questions.map(function (q) {
+        return {
+          name: q.name,
+          full: q.full,
+          score: toNum(r[q.scoreIdx]),
+          ans: q.ansIdx !== null ? (r[q.ansIdx] || '').trim() : '',
+          hasAns: q.ansIdx !== null
+        };
+      });
+
+      var objScore = col.obj !== -1 ? toNum(r[col.obj]) : 0;
+      var subScore = col.sub !== -1 ? toNum(r[col.sub]) : 0;
+
+      if (isEnglish) {
+        objScore = 0; subScore = 0;
+        details.forEach(function (d) {
+          if (/阅读理解|七选五|完型|语填/.test(d.name)) objScore += d.score;
+          else subScore += d.score;
+        });
+      }
+
+      /* 总分与缺考：优先缺考列，其次总分列里出现“缺考/—”等非数字文本 */
+      var totalRaw  = col.total  !== -1 ? String(r[col.total]  == null ? '' : r[col.total]).trim()  : '';
+      var absentRaw = col.absent !== -1 ? String(r[col.absent] == null ? '' : r[col.absent]).trim() : '';
+      if (!absentRaw && isAbsentText(totalRaw)) absentRaw = totalRaw;
+      if (absentRaw === '0' || absentRaw === '否' || /^false$/i.test(absentRaw)) absentRaw = '';
+
+      records.push({
+        rank:    col.rank    !== -1 ? cleanRank(r[col.rank])    : '',
+        clsRank: col.clsRank !== -1 ? cleanRank(r[col.clsRank]) : '',
+        cls: clsName,
+        clsKey: normalizeClass(clsName),
+        name: name,
+        stuId: col.stuId !== -1 ? (r[col.stuId] || '').trim() : '',
+        absent: absentRaw,
+        total: absentRaw !== '' ? 0 : toNum(totalRaw),
+        obj: objScore,
+        sub: subScore,
+        details: details
+      });
+    }
+
+    if (!records.length) throw new Error('没有解析到任何学生记录。');
+
+    if (col.rank === -1) {
+      var ranked = records.filter(function (r) { return r.absent === ''; });
+      ranked.sort(function (a, b) { return b.total - a.total; });
+      var lastScore = null, lastRank = 0;
+      for (var k = 0; k < ranked.length; k++) {
+        if (lastScore === null || ranked[k].total !== lastScore) { lastRank = k + 1; lastScore = ranked[k].total; }
+        ranked[k].rank = String(lastRank);
+      }
+      records.forEach(function (r) { if (r.absent !== '') r.rank = ''; });
+    }
+
+    function rankValue(rec) {
+      var r = String(rec.clsRank || rec.rank || '').trim();
+      if (!r || r === '0') return Number.POSITIVE_INFINITY;
+      var n = parseInt(r, 10);
+      return isFinite(n) ? n : Number.POSITIVE_INFINITY;
+    }
+    records.sort(function (a, b) {
+      var ra = rankValue(a), rb = rankValue(b);
+      if (ra !== rb) return ra - rb;
+      return b.total - a.total;
+    });
+
+    var fullTotal = 0;
+    for (var qi = 0; qi < questions.length; qi++) fullTotal += questions[qi].full;
+
+    var maxTotal = 0;
+    for (var ri = 0; ri < records.length; ri++) {
+      if (records[ri].absent === '' && records[ri].total > maxTotal) maxTotal = records[ri].total;
+    }
+    if (!(fullTotal > 0) || fullTotal < maxTotal) fullTotal = maxTotal;
+
+    return { records: records, questions: questions, fullTotal: fullTotal, isEnglish: isEnglish };
+  }
+
+  function activateSheet(sheet, label) {
+    state.sheet = sheet; state.label = label;
+    setMsg(loadMsg, '已读取 ' + label + '，共 ' + sheet.records.length + ' 人。', 'ok');
+    classPanel.hidden = false; searchPanel.hidden = false;
+    classInput.value = ''; idInput.value = ''; nameInput.value = '';
+    classStats.innerHTML = ''; classListWrap.innerHTML = '';
+    classCharts.hidden = true; classChartData = null;
+    setMsg(classMsg, '', ''); setMsg(searchMsg, '', '');
+    resultEl.innerHTML = '';
+  }
+
+  function doLoadSheet(rawName, preferExcel) {
+    var fileName = sanitizeFileName(rawName);
+    if (!fileName) { setMsg(loadMsg, '请输入考试日期或文件名。', 'error'); return; }
+    dateInput.value = fileName;
+    loadBtn.disabled = true; loadBtn.textContent = '读取中';
+    setMsg(loadMsg, '正在读取…', 'info');
+    resultEl.innerHTML = ''; classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
+    classCharts.hidden = true; classChartData = null;
+    fetchSheetRows(fileName, !!preferExcel).then(function (got) {
+      var sheet;
+      try { sheet = buildSheet(got.rows, got.fileName); }
+      catch (err) { setMsg(loadMsg, '读取失败：' + err.message, 'error'); return; }
+      activateSheet(sheet, got.fileName);
+    }).catch(function (err) {
+      if (err && err.code === 'NOT_FOUND') {
+        setMsg(loadMsg, err.message, 'error');
+      } else if (err && (err.status === 404 || err.code === 'HTML_FALLBACK')) {
+        setMsg(loadMsg, '未找到成绩单 ' + fileName + '，请检查文件名是否正确。', 'error');
+      } else {
+        setMsg(loadMsg, '读取失败：' + translateError(err), 'error');
+      }
+    }).then(function () { loadBtn.disabled = false; loadBtn.textContent = '读取'; });
+  }
+
+  function handleLoad() {
+    var raw = dateInput.value.trim();
+    if (raw.length > 3 && raw.slice(0, 3).toLowerCase() === 'gly') {
+      var pwd = raw.slice(3).trim();
+      if (pwd) {
+        loadBtn.disabled = true;
+        tryAdminLogin(pwd).then(function (ok) {
+          loadBtn.disabled = false;
+          if (!ok) doLoadSheet(raw, false);
+        });
+        return;
+      }
+    }
+    if (checkShortcut(raw)) return;
+    var preferExcel = false;
+    var toc = state.tocEntries || [];
+    for (var i = 0; i < toc.length; i++) {
+      var key = toc[i].fullId || toc[i].id;
+      if (key === raw) { preferExcel = !!toc[i].preferExcel; break; }
+    }
+    doLoadSheet(raw, preferExcel);
+  }
+
+  /* ============ 原始表格 / 本地导入 ============ */
+  var MAX_RAW_ROWS = 3000;
+  function showRawTable(rows) {
+    rawTableWrap.innerHTML = '';
+    if (!rows.length) return;
+    var display = rows.length > MAX_RAW_ROWS ? rows.slice(0, MAX_RAW_ROWS) : rows;
+    var colCount = 0;
+    display.forEach(function (r) { if (r.length > colCount) colCount = r.length; });
+    var wrap = document.createElement('div'); wrap.className = 'raw-table-wrap';
+    var table = document.createElement('table'); table.className = 'raw-table';
+    var thead = document.createElement('thead');
+    var trh = document.createElement('tr');
+    for (var c = 0; c < colCount; c++) {
+      var th = document.createElement('th');
+      var v = (display[0] && display[0][c] != null) ? display[0][c] : '';
+      th.textContent = v || ('列 ' + (c + 1));
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh); table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    for (var i = 1; i < display.length; i++) {
+      var tr = document.createElement('tr');
+      for (var j = 0; j < colCount; j++) {
+        var td = document.createElement('td');
+        td.textContent = display[i][j] == null ? '' : String(display[i][j]);
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody); wrap.appendChild(table); rawTableWrap.appendChild(wrap);
+    if (rows.length > MAX_RAW_ROWS) {
+      var note = document.createElement('div'); note.className = 'msg info';
+      note.textContent = '文件较大，仅显示前 ' + MAX_RAW_ROWS + ' 行（共 ' + rows.length + ' 行）。';
+      rawTableWrap.appendChild(note);
+    }
+  }
+  function onImported(rows, fileName) {
+    if (!rows || !rows.length) { setMsg(loadMsg, '文件内容为空。', 'error'); return; }
+    showRawTable(rows);
+    dateInput.value = String(fileName).replace(/\.[^.]+$/, '');
+    var sheet = null;
+    try { sheet = buildSheet(rows, fileName); } catch (e) { sheet = null; }
+    if (sheet) activateSheet(sheet, fileName);
+    else {
+      state.sheet = null; classPanel.hidden = true; searchPanel.hidden = true;
+      classCharts.hidden = true; classChartData = null;
+      resultEl.innerHTML = '';
+      setMsg(loadMsg, '已读取 ' + fileName + '，已显示原始表格（非成绩单格式，无法启用查询）。', 'info');
+    }
+  }
+  function processBuffer(buffer, name) {
+    parseBufferToRows(buffer, name).then(function (rows) { onImported(rows, name); })
+      .catch(function (e) { setMsg(loadMsg, '读取文件失败：' + translateError(e), 'error'); });
+  }
+
+  /* ============ 考试目录 ============ */
+  function splitMainComment(line) {
+    var depth = 0;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '(' || c === '（') depth++;
+      else if (c === ')' || c === '）') { if (depth > 0) depth--; }
+      else if (depth === 0 && (c === '，' || c === ',')) {
+        return { main: line.slice(0, i).trim(), comment: line.slice(i + 1).trim() };
+      }
+    }
+    return { main: line.trim(), comment: '' };
+  }
+  function parseTOCLine(line) {
+    var raw = String(line == null ? '' : line).replace(/^\uFEFF/, '').trim();
+    if (!raw || raw.charAt(0) === '#') return [];
+    var sp = splitMainComment(raw);
+    var main = sp.main, comment = sp.comment;
+    var preferExcel = false;
+    if (/^[xX]\./.test(main)) { preferExcel = true; main = main.slice(2).trim(); }
+    if (!main) return [];
+    var result = [];
+    var m = main.match(/^([^()（）]+)[(（]([^)）]+)[)）]$/);
+    if (m) {
+      var base = m[1].trim();
+      var classes = m[2].split(/[,，]/).map(function (s) { return s.trim().replace(/[^0-9]/g, ''); }).filter(function (s) { return s; });
+      if (classes.length && base) {
+        classes.forEach(function (clsNum) {
+          var padded = clsNum.length === 1 ? '0' + clsNum : clsNum;
+          var e = parseSheetId(base + padded);
+          e.comment = comment; e.preferExcel = preferExcel;
+          result.push(e);
+        });
+        return result;
+      }
+    }
+    var single = parseSheetId(main);
+    single.comment = comment; single.preferExcel = preferExcel;
+    result.push(single);
+    return result;
+  }
+  function loadTOC() {
+    fetchText(sheetURL('ml.txt')).then(function (text) {
+      var lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var entries = [];
+      for (var i = 0; i < lines.length; i++) {
+        var arr = parseTOCLine(lines[i]);
+        for (var j = 0; j < arr.length; j++) entries.push(arr[j]);
+      }
+      state.tocEntries = entries;
+      if (!entries.length) { tocPanel.hidden = true; return; }
+      renderTOC(entries);
+      tocPanel.hidden = false;
+    }).catch(function () { state.tocEntries = []; tocPanel.hidden = true; });
+  }
+  function sortSubjects(subjects) {
+    subjects.sort(function (a, b) {
+      var ia = SUBJECT_ORDER.indexOf(a), ib = SUBJECT_ORDER.indexOf(b);
+      if (ia === -1) ia = 1000; if (ib === -1) ib = 1000;
+      if (ia !== ib) return ia - ib;
+      return a.localeCompare(b, 'zh');
+    });
+    return subjects;
+  }
+  function tocLabel(e) {
+    var label = formatDate(e.date);
+    if (e.cls) label += ' ' + parseInt(e.cls, 10) + '班';
+    if (e.comment) label += '（' + e.comment + '）';
+    return label;
+  }
+  function renderTOC(entries) {
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+    var subjects = sortSubjects(Object.keys(groups));
+    tocList.innerHTML = '';
+    subjects.forEach(function (subj) {
+      var list = groups[subj].slice().sort(function (a, b) {
+        var da = b.date.localeCompare(a.date);
+        if (da !== 0) return da;
+        return (a.cls || '').localeCompare(b.cls || '');
+      });
+      var g = document.createElement('div'); g.className = 'toc-group';
+      var title = document.createElement('div'); title.className = 'toc-subject';
+      title.textContent = subj + '（' + list.length + '）'; g.appendChild(title);
+      var items = document.createElement('div'); items.className = 'toc-items';
+      list.forEach(function (e) {
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'toc-item';
+        btn.textContent = tocLabel(e);
+        btn.title = (e.fullId || e.id) + (e.comment ? (' · ' + e.comment) : '');
+        btn.addEventListener('click', function () {
+          var prev = tocList.querySelector('.toc-item.active');
+          if (prev) prev.classList.remove('active');
+          btn.classList.add('active');
+          dateInput.value = e.fullId || e.id;
+          handleLoad();
+        });
+        items.appendChild(btn);
+      });
+      g.appendChild(items); tocList.appendChild(g);
+    });
+    setMsg(tocMsg, '', '');
+  }
+
+  /* ============ 柱状图 ============ */
+  function cssRoundRect(ctx, x, y, w, h, r) {
+    if (h <= 0) return;
+    r = Math.min(r, w / 2, h / 2);
+    if (r < 0.5) { ctx.beginPath(); ctx.rect(x, y, w, h); ctx.closePath(); return; }
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+  function drawBarChart(canvas, cfg) {
+    if (!canvas) return;
+    var holder = canvas.parentNode;
+    var availW = Math.floor(holder.clientWidth || 0);
+    if (availW < 60) availW = Math.max(260, (document.documentElement.clientWidth || 360) - 60);
+    var w = cfg.width ? Math.max(cfg.width, availW) : availW;
+    var h = cfg.height || 230;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var labels = cfg.labels || [], values = cfg.values || [], colors = cfg.colors || [];
+    var n = values.length;
+    if (!n) return;
+    var maxV = cfg.maxV;
+    if (maxV == null) {
+      maxV = 0;
+      for (var q = 0; q < n; q++) if (values[q] > maxV) maxV = values[q];
+    }
+    if (!(maxV > 0)) maxV = 1;
+
+    var rotate = (cfg.rotateLabels != null) ? cfg.rotateLabels : (n > 9);
+    var padL = (cfg.padL != null) ? cfg.padL : 42;
+    var padR = 14, padT = 26;
+    var padB = rotate ? 66 : 36;
+    var plotW = Math.max(40, w - padL - padR);
+    var plotH = Math.max(40, h - padT - padB);
+
+    var ticks = 5;
+    ctx.font = '11px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    for (var t = 0; t <= ticks; t++) {
+      var tv = maxV * t / ticks;
+      var ty = padT + plotH - (tv / maxV) * plotH;
+      ctx.strokeStyle = (t === 0) ? '#dbe2ec' : '#eef1f6';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, Math.round(ty) + 0.5);
+      ctx.lineTo(padL + plotW, Math.round(ty) + 0.5);
+      ctx.stroke();
+      ctx.fillStyle = '#98a2b3';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(cfg.yFmt ? cfg.yFmt(tv) : String(Math.round(tv)), padL - 8, ty);
+    }
+
+    var slot = plotW / n;
+    var barW = Math.max(5, Math.min(cfg.maxBarW || 46, slot * 0.58));
+    var baseY = padT + plotH;
+    var showValue = cfg.showValue !== false && slot > 16;
+
+    for (var k = 0; k < n; k++) {
+      var cx = padL + slot * k + slot / 2;
+      var v = values[k];
+      var bh = (v / maxV) * plotH;
+      if (!(bh > 0)) bh = 0;
+      if (bh > plotH) bh = plotH;
+      var x = cx - barW / 2;
+      var y = baseY - bh;
+      var col = colors[k] || '#05c1ae';
+      if (bh > 0.8) {
+        ctx.fillStyle = col;
+        cssRoundRect(ctx, x, y, barW, bh, Math.min(4, barW / 2, bh / 2));
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(x, baseY - 2, barW, 2);
+      }
+      if (showValue) {
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold ' + (slot > 28 ? '11.5' : '10.5') + 'px -apple-system,"PingFang SC",sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        var vt = cfg.vFmt ? cfg.vFmt(v) : String(Math.round(v * 100) / 100);
+        ctx.fillText(vt, cx, y - 5);
+      }
+      if (labels[k] != null) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px -apple-system,"PingFang SC",sans-serif';
+        if (rotate) {
+          ctx.save();
+          ctx.translate(cx, baseY + 10);
+          ctx.rotate(-Math.PI / 4);
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(labels[k], 0, 0);
+          ctx.restore();
+        } else {
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(labels[k], cx, baseY + 8);
+        }
+      }
+    }
+  }
+
+  /* ============ 班级图表 ============ */
+  var classChartData = null;
+  function renderClassCharts() {
+    if (!classChartData || !state.sheet) { classCharts.hidden = true; return; }
+    var list = classChartData.list || [];
+    var taken = list.filter(function (r) { return r.absent === ''; });
+    if (!taken.length) { classCharts.hidden = true; return; }
+    classCharts.hidden = false;
+
+    var fullTotal = classChartData.fullTotal;
+    if (!(fullTotal > 0)) {
+      var mx = 0;
+      taken.forEach(function (r) { if (r.total > mx) mx = r.total; });
+      fullTotal = mx;
+    }
+
+    if (fullTotal > 0) {
+      gradeBlock.hidden = false;
+      var bands = [
+        { label: '优秀', min: 0.85, color: '#00b578' },
+        { label: '良好', min: 0.70, color: '#05c1ae' },
+        { label: '及格', min: 0.60, color: '#ff9500' },
+        { label: '不及格', min: -1, color: '#f53f3f' }
+      ];
+      var counts = [0,0,0,0];
+      taken.forEach(function (r) {
+        var ratio = r.total / fullTotal;
+        if (ratio >= 0.85) counts[0]++;
+        else if (ratio >= 0.70) counts[1]++;
+        else if (ratio >= 0.60) counts[2]++;
+        else counts[3]++;
+      });
+      gradeSub.textContent = '本次满分基准 ' + fmt(fullTotal) + ' 分 · 实考 ' + taken.length + ' 人';
+      drawBarChart(gradeChart, {
+        labels: bands.map(function (b) { return b.label; }),
+        values: counts,
+        colors: bands.map(function (b) { return b.color; }),
+        maxBarW: 62, height: 226,
+        yFmt: function (v) { return String(Math.round(v)); },
+        vFmt: function (v) { return v + '人'; }
+      });
+    } else {
+      gradeBlock.hidden = true;
+    }
+
+    var qs = state.sheet.questions || [];
+    var hasQuestionFull = qs.some(function (q) { return q.full > 0; });
+    if (qs.length && hasQuestionFull) {
+      questionBlock.hidden = false;
+      var qLabels = [], qValues = [], qColors = [];
+      qs.forEach(function (q, idx) {
+        var sum = 0, cnt = 0;
+        taken.forEach(function (r) {
+          var d = r.details[idx];
+          if (d) { sum += d.score; cnt++; }
+        });
+        var rate = (cnt && q.full > 0) ? (sum / cnt) / q.full : 0;
+        qLabels.push(/^\d+$/.test(q.name) ? ('第' + q.name + '题') : q.name);
+        qValues.push(rate);
+        qColors.push(rate >= 0.8 ? '#00b578' : rate >= 0.6 ? '#05c1ae' : rate >= 0.4 ? '#ff9500' : '#f53f3f');
+      });
+      var boxW = questionChart.parentNode.clientWidth || 300;
+      var qW = Math.max(boxW, qs.length * 34 + 70);
+      questionSub.textContent = '共 ' + qs.length + ' 题 · 班级平均得分率';
+      drawBarChart(questionChart, {
+        labels: qLabels, values: qValues, colors: qColors,
+        maxV: 1, width: qW, height: 250, maxBarW: 40,
+        rotateLabels: qs.length > 8,
+        yFmt: function (v) { return Math.round(v * 100) + '%'; },
+        vFmt: function (v) { return Math.round(v * 100) + '%'; }
+      });
+    } else {
+      questionBlock.hidden = true;
+    }
+
+    if (state.adminMode && taken.length) {
+      studentBlock.hidden = false;
+      var sLabels = taken.map(function (r) { return r.name; });
+      var sValues = taken.map(function (r) { return r.total; });
+      var sColors = taken.map(function () { return '#05c1ae'; });
+      if (sColors.length > 0) sColors[0] = '#f5a623';
+      if (sColors.length > 1) sColors[1] = '#7ab8ff';
+      if (sColors.length > 2) sColors[2] = '#c98b4b';
+      var sBoxW = studentChart.parentNode.clientWidth || 300;
+      var sW = Math.max(sBoxW, taken.length * 38 + 70);
+      var maxScore = 0;
+      sValues.forEach(function (v) { if (v > maxScore) maxScore = v; });
+      var sMax = Math.ceil(maxScore + Math.max(5, maxScore * 0.06));
+      studentSub.textContent = '共 ' + taken.length + ' 人（按名次排列，可左右滑动查看）';
+      drawBarChart(studentChart, {
+        labels: sLabels, values: sValues, colors: sColors,
+        maxV: sMax, width: sW, height: 260, maxBarW: 30,
+        rotateLabels: taken.length > 10,
+        yFmt: function (v) { return String(Math.round(v)); },
+        vFmt: function (v) { return String(Math.round(v)); }
+      });
+    } else {
+      studentBlock.hidden = true;
+    }
+  }
+  var classChartResizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (!classChartData || classCharts.hidden) return;
+    if (classChartResizeTimer) clearTimeout(classChartResizeTimer);
+    classChartResizeTimer = setTimeout(function () { classChartResizeTimer = null; renderClassCharts(); }, 180);
+  });
+
+  /* ============ 班级查询 ============ */
+  function doClassQuery() {
+    if (!state.sheet) { setMsg(classMsg, '请先读取成绩单。', 'error'); return; }
+    var raw = classInput.value.trim();
+    if (!raw) { setMsg(classMsg, '请输入班级。', 'error'); return; }
+    var key = normalizeClass(raw);
+    var list = state.sheet.records.filter(function (r) { return r.clsKey === key; });
+    classStats.innerHTML = ''; classListWrap.innerHTML = ''; resultEl.innerHTML = '';
+    classCharts.hidden = true; classChartData = null;
+    if (!list.length) { setMsg(classMsg, '未找到该班级。', 'error'); return; }
+
+    var taken = list.filter(function (r) { return r.absent === ''; });
+    var absentCount = list.length - taken.length;
+    function avgOf(arr, field) {
+      if (!arr.length) return 0;
+      return arr.reduce(function (a, r) { return a + r[field]; }, 0) / arr.length;
+    }
+    var avgTotal = avgOf(taken, 'total'), avgObj = avgOf(taken, 'obj'), avgSub = avgOf(taken, 'sub');
+    var html = '';
+    html += statBox('班级人数', list.length, ' 人');
+    if (absentCount > 0) html += statBox('缺考', absentCount, ' 人', true);
+    html += statBox('实考人数', taken.length, ' 人');
+    html += statBox('平均总分', taken.length ? fmt1(avgTotal) : '—', taken.length ? ' 分' : '');
+    html += statBox('平均客观分', taken.length ? fmt1(avgObj) : '—', taken.length ? ' 分' : '');
+    html += statBox('平均主观分', taken.length ? fmt1(avgSub) : '—', taken.length ? ' 分' : '');
+    classStats.innerHTML = html;
+
+    var info = (list[0].cls || raw) + ' · 共 ' + list.length + ' 人' +
+      (absentCount > 0 ? '（平均分不含 ' + absentCount + ' 名缺考学生）' : '');
+    if (!state.adminMode) info += ' · 如需查看个人成绩，请在下方输入姓名（及考号）。';
+    setMsg(classMsg, info, 'info');
+
+    var fullTotal = state.sheet.fullTotal || 0;
+    classChartData = { list: list, fullTotal: fullTotal };
+    renderClassCharts();
+
+    if (state.adminMode) {
+      var head = document.createElement('div'); head.className = 'list-head';
+      head.innerHTML = '<span>点击学生查看详细得分</span><span>共 <b>' + list.length + '</b> 人（按排名排序）</span>';
+      classListWrap.appendChild(head);
+      var grid = document.createElement('div'); grid.className = 'stu-list';
+      list.forEach(function (rec) {
+        var el = document.createElement('div'); el.className = 'stu';
+        var rankTxt = (rec.clsRank && rec.clsRank !== '0') ? rec.clsRank : ((rec.rank && rec.rank !== '0') ? rec.rank : '—');
+        var scoreHtml = rec.absent ? '<b class="abs">缺考</b>' : '<b>' + esc(fmt(rec.total)) + '</b>';
+        el.innerHTML = '<span class="rk">' + esc(rankTxt) + '</span>' +
+          '<span class="nm">' + esc(rec.name) + '</span>' +
+          '<span class="sc">' + scoreHtml + '</span>';
+        el.addEventListener('click', function () {
+          var prev = grid.querySelector('.stu.active');
+          if (prev) prev.classList.remove('active');
+          el.classList.add('active');
+          resultEl.innerHTML = '';
+          resultEl.appendChild(buildCard(rec));
+          resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+        grid.appendChild(el);
+      });
+      classListWrap.appendChild(grid);
+    }
+  }
+  function statBox(label, value, unit, warn) {
+    return '<div class="stat' + (warn ? ' warn' : '') + '">' +
+      '<div class="stat-l">' + esc(label) + '</div>' +
+      '<div class="stat-v">' + esc(value) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div></div>';
+  }
+
+  /* ============ 个人卡片与查询 ============ */
+  function buildCard(rec) {
+    var card = document.createElement('div'); card.className = 'card';
+    var isAbsent = rec.absent !== '';
+    var sum = rec.details.reduce(function (a, d) { return a + d.score; }, 0);
+    var head = document.createElement('div'); head.className = 'card-head';
+
+    var rank = document.createElement('div'); rank.className = 'rank-badge';
+    var rankText = '暂无排名';
+    if (rec.clsRank && rec.clsRank !== '0') {
+      rankText = '班级第 ' + rec.clsRank + ' 名';
+      if (rec.rank && rec.rank !== '0' && rec.rank !== rec.clsRank) rankText += ' · 年级第 ' + rec.rank + ' 名';
+    } else if (rec.rank && rec.rank !== '0') {
+      rankText = '第 ' + rec.rank + ' 名';
+    }
+    rank.textContent = rankText;
+
+    var who = document.createElement('div'); who.className = 'who';
+    var nm = document.createElement('div'); nm.className = 'name'; nm.textContent = rec.name;
+    if (isAbsent) { var tag = document.createElement('span'); tag.className = 'tag-absent'; tag.textContent = '缺考'; nm.appendChild(tag); }
+    var cl = document.createElement('div'); cl.className = 'cls'; cl.textContent = rec.cls || '—';
+    who.appendChild(nm); who.appendChild(cl);
+
+    var total = document.createElement('div'); total.className = 'total';
+    total.innerHTML = '<b>' + esc(fmt(rec.total)) + '</b>分';
+    head.appendChild(rank); head.appendChild(who); head.appendChild(total);
+
+    var meta = document.createElement('div'); meta.className = 'meta';
+    meta.innerHTML = '<span>客观分<b>' + esc(fmt(rec.obj)) + '</b></span>' +
+      '<span>主观分<b>' + esc(fmt(rec.sub)) + '</b></span>' +
+      '<span>小题合计<b>' + esc(fmt(sum)) + '</b></span>';
+    if (rec.stuId) meta.innerHTML += '<span>学号<b>' + esc(rec.stuId) + '</b></span>';
+
+    var grid = document.createElement('div'); grid.className = 'grid';
+    rec.details.forEach(function (d) {
+      var q = document.createElement('div');
+      var cls = 'q ';
+      if (d.score >= d.full) cls += 'full'; else if (d.score <= 0) cls += 'zero'; else cls += 'part';
+      q.className = cls;
+      var label = /^\d+$/.test(d.name) ? ('第' + d.name + '题') : d.name;
+      var ansText = '';
+      if (d.hasAns) ansText = (d.ans && d.ans !== '#') ? ('选 ' + d.ans) : '未作答';
+      q.innerHTML = '<div class="qname">' + esc(label) + '</div>' +
+        '<div class="qscore">' + esc(fmt(d.score)) + '<span>/' + esc(fmt(d.full)) + '</span></div>' +
+        '<div class="qans">' + esc(ansText) + '</div>';
+      grid.appendChild(q);
+    });
+    card.appendChild(head); card.appendChild(meta); card.appendChild(grid);
+    return card;
+  }
+  function doSearch() {
+    if (!state.sheet) { setMsg(searchMsg, '请先读取成绩单。', 'error'); return; }
+    var key = nameInput.value.trim();
+    resultEl.innerHTML = '';
+    if (!key) { setMsg(searchMsg, '请输入姓名。', 'error'); return; }
+    if (!state.adminMode) {
+      var id = idInput.value.trim();
+      var err = validateIdName(id, key);
+      if (err) { setMsg(searchMsg, err, 'error'); return; }
+    }
+    var list;
+    if (state.adminMode) list = state.sheet.records.filter(function (r) { return r.name.indexOf(key) > -1; });
+    else list = state.sheet.records.filter(function (r) { return r.name === key; });
+    if (!list.length) {
+      setMsg(searchMsg, state.adminMode ? '未找到包含“' + key + '”的学生。' : '未找到“' + key + '”，请输入完整准确的姓名。', 'error');
+      return;
+    }
+    setMsg(searchMsg, '找到 ' + list.length + ' 条记录（按排名排序）：', 'info');
+    list.forEach(function (rec) { resultEl.appendChild(buildCard(rec)); });
+  }
+
+  /* ============ 路由 ============ */
+  function applyRoute() {
+    var hash = location.hash;
+    var isTrend = hash === '#trend';
+    var isLogs = hash === '#adminLogs';
+    if (isLogs && !state.adminMode) { location.hash = ''; return; }
+    mainView.hidden = isTrend || isLogs;
+    trendView.hidden = !isTrend;
+    adminLogsView.hidden = !isLogs;
+    if (isTrend) {
+      renderTrendTOC();
+      if (state.trendPoints && state.trendPoints.length && !trendResultPanel.hidden) scheduleRedraw();
+      window.scrollTo(0, 0);
+    }
+    if (isLogs) { loadAdminLogs(); window.scrollTo(0, 0); }
+  }
+  window.addEventListener('hashchange', applyRoute);
+
+  trendBtn.addEventListener('click', function () {
+    if (location.hash !== '#trend') location.hash = 'trend'; else applyRoute();
+  });
+  backBtn.addEventListener('click', function () {
+    if (location.hash) location.hash = ''; else applyRoute();
+  });
+  adminLogsBtn.addEventListener('click', function () {
+    if (!state.adminMode) return;
+    if (location.hash !== '#adminLogs') location.hash = 'adminLogs'; else applyRoute();
+  });
+  logsBackBtn.addEventListener('click', function () {
+    if (location.hash) location.hash = ''; else applyRoute();
+  });
+  logsRefreshBtn.addEventListener('click', loadAdminLogs);
+
+  /* ============ 访问日志 ============ */
+  function loadAdminLogs() {
+    setMsg(logsMsg, '正在加载访问日志…', 'info');
+    logsContent.innerHTML = '';
+    logsCountBox.innerHTML = '';
+    var promise;
+    if (state.githubConfig) promise = ghReadFile(LOG_FILE).then(function (r) { return r.content || ''; });
+    else promise = fetchText(sheetURL(LOG_FILE));
+    promise.then(function (text) {
+      var data = parseLogContent(text);
+      var statsHtml = '';
+      statsHtml += statBox('累计访问', data.count, ' 次');
+      statsHtml += statBox('显示条数', data.entries.length, ' 条');
+      statsHtml += statBox('最多保留', LOG_MAX_ENTRIES, ' 条');
+      logsCountBox.innerHTML = statsHtml;
+      if (!data.entries.length) { setMsg(logsMsg, '暂无访问记录。', 'info'); return; }
+      setMsg(logsMsg, '显示最近 ' + data.entries.length + ' 条记录。', 'ok');
+      renderAdminLogs(data.entries);
+    }).catch(function (e) {
+      var msg = translateError(e);
+      if (!state.githubConfig) msg += '。未配置 GitHub 令牌，无法获取最新日志。';
+      setMsg(logsMsg, '获取失败：' + msg, 'error');
+    });
+  }
+  function renderAdminLogs(records) {
+    var cols = ['序号','时间','IP','浏览器','屏幕','语言','平台','时区'];
+    var wrap = document.createElement('div'); wrap.className = 'raw-table-wrap';
+    var table = document.createElement('table'); table.className = 'raw-table';
+    var thead = document.createElement('thead'); var trh = document.createElement('tr');
+    cols.forEach(function (c) { var th = document.createElement('th'); th.textContent = c; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    var list = records.slice().reverse();
+    list.forEach(function (info, idx) {
+      var ua = info.userAgent || '';
+      var uaShort = ua.length > 70 ? ua.slice(0, 70) + '…' : ua;
+      var time = info.localTime || info.timestamp || '';
+      var values = [String(records.length - idx), time, info.ip || '', uaShort, info.screen || '', info.language || '', info.platform || '', info.timezone || ''];
+      var tr = document.createElement('tr');
+      values.forEach(function (v) {
+        var td = document.createElement('td');
+        td.textContent = v == null ? '' : String(v);
+        if (v && String(v).length > 70) td.title = String(v);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); logsContent.appendChild(wrap);
+  }
+
+  /* ============ 趋势视图 ============ */
+  function renderTrendTOC() {
+    var entries = state.tocEntries || [];
+    if (!entries.length) {
+      trendTOCList.innerHTML = '<div class="msg info" style="margin-top:0;">未读取到考试目录（ml.txt）</div>';
+      return;
+    }
+    var groups = {};
+    entries.forEach(function (e) {
+      if (!groups[e.subject]) groups[e.subject] = [];
+      groups[e.subject].push(e);
+    });
+    var subjects = sortSubjects(Object.keys(groups));
+    var html = '';
+    subjects.forEach(function (subj) {
+      var list = groups[subj].slice().sort(function (a, b) {
+        var da = b.date.localeCompare(a.date);
+        if (da !== 0) return da;
+        return (a.cls || '').localeCompare(b.cls || '');
+      });
+      html += '<div class="toc-group"><div class="toc-subject">' + esc(subj) + '（' + list.length + '）</div><div class="trend-checks">';
+      list.forEach(function (e) {
+        html += '<label class="trend-check"><input type="checkbox" data-id="' + esc(e.fullId || e.id) + '" checked>' +
+          '<span>' + esc(tocLabel(e)) + '</span><span class="t-id">' + esc(e.fullId || e.id) + '</span></label>';
+      });
+      html += '</div></div>';
+    });
+    trendTOCList.innerHTML = html;
+  }
+  selectAllBtn.addEventListener('click', function () {
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < cbs.length; i++) cbs[i].checked = true;
+  });
+  selectNoneBtn.addEventListener('click', function () {
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < cbs.length; i++) cbs[i].checked = false;
+  });
+  function updateProgress(done, total, label) {
+    var pct = total ? Math.round(done / total * 100) : 0;
+    progressInner.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+    progressText.textContent = label || ('已完成 ' + done + ' / ' + total);
+  }
+
+  /* 从原始表格中提取学生（同步修复全卷/学校排名/缺考） */
+  function findStudentInRows(rows, name, fuzzy) {
+    if (!rows || !rows.length) return null;
+    var headerRowIdx = -1;
+    for (var hi = 0; hi < Math.min(rows.length, 20); hi++) {
+      var hr = rows[hi];
+      if (!hr) continue;
+      for (var hj = 0; hj < hr.length; hj++) {
+        if (String(hr[hj] == null ? '' : hr[hj]).replace(/^\uFEFF/, '').trim() === '姓名') {
+          headerRowIdx = hi; break;
+        }
+      }
+      if (headerRowIdx >= 0) break;
+    }
+    if (headerRowIdx < 0) return null;
+
+    var header = rows[headerRowIdx].map(function (h) {
+      return String(h == null ? '' : h).replace(/^\uFEFF/, '').trim();
+    });
+    var iName = header.indexOf('姓名');
+    if (iName === -1) return null;
+
+    var iTotal   = pickIndex(header, TOTAL_NAMES, -1);
+    var iRank    = pickIndex(header, RANK_NAMES, -1);
+    var iClsRank = pickIndex(header, CLS_RANK_NAMES, -1);
+    var iCls     = header.indexOf('班级');
+    var iAbsent  = pickIndex(header, ABSENT_NAMES, -1);
+
+    for (var i = headerRowIdx + 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r) continue;
+      var rName = ((r[iName] || '')).trim();
+      var matched = fuzzy ? rName.indexOf(name) > -1 : rName === name;
+      if (matched) {
+        var totalRaw  = iTotal   !== -1 ? String(r[iTotal]   == null ? '' : r[iTotal]).trim()   : '';
+        var absentRaw = iAbsent  !== -1 ? String(r[iAbsent]  == null ? '' : r[iAbsent]).trim()  : '';
+        if (!absentRaw && isAbsentText(totalRaw)) absentRaw = totalRaw;
+        if (absentRaw === '0' || absentRaw === '否' || /^false$/i.test(absentRaw)) absentRaw = '';
+        return {
+          total: absentRaw !== '' ? 0 : toNum(totalRaw),
+          rank:    iRank    !== -1 ? cleanRank(r[iRank])    : '',
+          clsRank: iClsRank !== -1 ? cleanRank(r[iClsRank]) : '',
+          cls:     iCls     !== -1 ? (r[iCls] || '').trim() : '',
+          absent: absentRaw
+        };
+      }
+    }
+    return null;
+  }
+
+  function startTrendQuery() {
+    var name = trendName.value.trim();
+    if (!name) { setMsg(trendMsg, '请输入姓名。', 'error'); return; }
+    if (!state.adminMode) {
+      var id = trendId.value.trim();
+      var err = validateIdName(id, name);
+      if (err) { setMsg(trendMsg, err, 'error'); return; }
+    }
+    var cbs = trendTOCList.querySelectorAll('input[type="checkbox"]');
+    var selected = [];
+    for (var i = 0; i < cbs.length; i++) if (cbs[i].checked) selected.push(cbs[i].getAttribute('data-id'));
+    if (!selected.length) { setMsg(trendMsg, '请至少选择一个考试。', 'error'); return; }
+    setMsg(trendMsg, '', '');
+    trendResultPanel.hidden = true; progressPanel.hidden = false;
+    updateProgress(0, selected.length, '准备中…');
+    trendStartBtn.disabled = true; trendStartBtn.textContent = '查询中…';
+    var entriesMap = {};
+    (state.tocEntries || []).forEach(function (e) { entriesMap[e.fullId || e.id] = e; });
+    selected.sort(function (a, b) {
+      var ea = entriesMap[a] || parseSheetId(a), eb = entriesMap[b] || parseSheetId(b);
+      var da = ea.date.localeCompare(eb.date);
+      if (da !== 0) return da;
+      return (ea.cls || '').localeCompare(eb.cls || '');
+    });
+    var fuzzy = state.adminMode, results = [], errors = [], idx = 0;
+    function next() {
+      if (idx >= selected.length) { finishTrendQuery(results, errors, name); return; }
+      var sid = selected[idx];
+      var entry = entriesMap[sid] || parseSheetId(sid);
+      updateProgress(idx, selected.length, '正在读取 ' + sid + '…');
+      fetchSheetRows(sid, !!entry.preferExcel).then(function (got) {
+        try {
+          var rec = findStudentInRows(got.rows, name, fuzzy);
+          if (rec) {
+            var label = formatDateShort(entry.date);
+            if (entry.cls) label += ' ' + parseInt(entry.cls, 10) + '班';
+            results.push({
+              id: sid, date: entry.date, subject: entry.subject, cls: entry.cls,
+              label: label,
+              fullLabel: formatDate(entry.date) + (entry.cls ? (' ' + parseInt(entry.cls, 10) + '班') : ''),
+              total: rec.total, rank: rec.rank, clsRank: rec.clsRank, recCls: rec.cls, absent: rec.absent
+            });
+          } else errors.push({ id: sid, msg: '未找到该学生' });
+        } catch (e) { errors.push({ id: sid, msg: '解析失败' }); }
+        idx++; updateProgress(idx, selected.length); next();
+      }).catch(function () { errors.push({ id: sid, msg: '读取失败' }); idx++; updateProgress(idx, selected.length); next(); });
+    }
+    next();
+  }
+
+  function finishTrendQuery(results, errors, studentName) {
+    trendStartBtn.disabled = false; trendStartBtn.textContent = '开始查询';
+    if (!results.length) {
+      progressPanel.hidden = true; trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中没有任何记录。', 'error'); return;
+    }
+    var valid = results.filter(function (r) { return r.absent === ''; });
+    if (!valid.length) {
+      progressPanel.hidden = true; trendResultPanel.hidden = true;
+      setMsg(trendMsg, '该学生在所选考试中均为缺考。', 'error'); return;
+    }
+    valid.sort(function (a, b) {
+      var da = a.date.localeCompare(b.date);
+      if (da !== 0) return da;
+      return (a.cls || '').localeCompare(b.cls || '');
+    });
+    progressPanel.hidden = true; trendResultPanel.hidden = false;
+    state.trendPoints = valid;
+    state.chartStudentName = studentName || '';
+    state.chartView = { start: 0, end: valid.length - 1 };
+    updateChartTitle();
+    updateRangeInfo();
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        drawChart();
+        renderTrendStats(valid, errors);
+      });
+    });
+  }
+  function updateChartTitle() {
+    var pts = state.trendPoints || [];
+    var name = state.chartStudentName || '';
+    if (!pts.length) {
+      chartTitle.firstChild.nodeValue = '—';
+      chartSub.textContent = '';
+      return;
+    }
+    var cls = pts[0].recCls || pts[0].cls || '';
+    chartTitle.firstChild.nodeValue = (name ? name : '该学生') + ' 的成绩趋势';
+    var subParts = [];
+    if (cls) subParts.push(cls);
+    subParts.push('共 ' + pts.length + ' 次有效考试');
+    chartSub.textContent = subParts.join(' · ');
+  }
+  function updateRangeInfo() {
+    var pts = state.trendPoints || [];
+    if (!pts.length) { rangeInfo.textContent = ''; return; }
+    var v = state.chartView;
+    rangeInfo.textContent = '显示 ' + (v.end - v.start + 1) + ' / ' + pts.length + ' 次';
+  }
+
+  /* ============ Canvas 绘制 ============ */
+  function computeCanvasSize() {
+    var wrap = chartWrap;
+    if (!wrap) return { w: 300, h: 260 };
+    var rect = wrap.getBoundingClientRect();
+    var availW = Math.max(0, rect.width - 8);
+    if (!availW) availW = Math.max(280, document.documentElement.clientWidth - 60);
+    availW = Math.max(240, availW);
+    var viewportW = document.documentElement.clientWidth || window.innerWidth || 360;
+    var h = viewportW < 420 ? 240 : (viewportW < 640 ? 280 : 340);
+    return { w: Math.round(availW), h: Math.round(h) };
+  }
+  function setupCanvasSize() {
+    var canvas = trendChart;
+    var size = computeCanvasSize();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(size.w * dpr);
+    canvas.height = Math.round(size.h * dpr);
+    canvas.style.width = size.w + 'px';
+    canvas.style.height = size.h + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: size.w, h: size.h };
+  }
+  function drawChart() {
+    var points = state.trendPoints || [];
+    if (!points.length) return;
+    if (trendResultPanel.hidden) return;
+    var setup = setupCanvasSize();
+    var ctx = setup.ctx, cssW = setup.w, cssH = setup.h;
+    ctx.clearRect(0, 0, cssW, cssH);
+    var padL = 46, padR = 22, padT = 22, padB = 58;
+    if (cssW < 400) { padL = 40; padR = 14; padB = 54; }
+    var plotW = Math.max(40, cssW - padL - padR);
+    var plotH = Math.max(40, cssH - padT - padB);
+    var v = state.chartView;
+    var start = Math.max(0, Math.min(points.length - 1, v.start));
+    var end = Math.max(start, Math.min(points.length - 1, v.end));
+    var viewPoints = points.slice(start, end + 1);
+    var allScores = points.map(function (p) { return p.total; });
+    var dMin = Math.min.apply(null, allScores);
+    var dMax = Math.max.apply(null, allScores);
+    var pad = Math.max(5, (dMax - dMin) * 0.2);
+    var yMin = Math.max(0, Math.floor(dMin - pad));
+    var yMax = Math.ceil(dMax + pad);
+    if (yMin === yMax) { yMin = Math.max(0, yMin - 5); yMax += 5; }
+    function xPos(i) {
+      var n = viewPoints.length;
+      if (n === 1) return padL + plotW / 2;
+      return padL + (i / (n - 1)) * plotW;
+    }
+    function yPos(val) { return padT + plotH - ((val - yMin) / (yMax - yMin)) * plotH; }
+
+    ctx.strokeStyle = '#e4e9f2'; ctx.lineWidth = 1;
+    ctx.font = (cssW < 400 ? '10px' : '11px') + ' -apple-system, "PingFang SC", sans-serif';
+    var ySteps = 5;
+    for (var i = 0; i <= ySteps; i++) {
+      var vv = yMin + (yMax - yMin) * i / ySteps;
+      var y = yPos(vv);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+      ctx.fillStyle = '#8b95a7'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(Math.round(vv)), padL - 6, y);
+    }
+
+    ctx.strokeStyle = '#05c1ae'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    viewPoints.forEach(function (p, i) {
+      var x = xPos(i), y = yPos(p.total);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    var showLabel = viewPoints.length <= 20;
+    var dotR = viewPoints.length > 20 ? 3.5 : 4.5;
+    viewPoints.forEach(function (p, i) {
+      var x = xPos(i), y = yPos(p.total);
+      ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#05c1ae'; ctx.lineWidth = 2.2; ctx.stroke();
+      if (showLabel) {
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold ' + (cssW < 400 ? '10.5px' : '11.5px') + ' -apple-system, "PingFang SC", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(String(Math.round(p.total)), x, y - 7);
+      }
+    });
+
+    var labelStep = viewPoints.length > 12 ? Math.ceil(viewPoints.length / 8) : 1;
+    var angle = -Math.PI / 5;
+    var lx = cssW < 400 ? 10 : 10.5;
+    viewPoints.forEach(function (p, i) {
+      if (i % labelStep !== 0 && i !== viewPoints.length - 1) return;
+      var x = xPos(i);
+      ctx.save();
+      ctx.translate(x, padT + plotH + 8);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#8b95a7';
+      ctx.font = lx + 'px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText(p.label, 0, 0);
+      ctx.restore();
+    });
+  }
+  var redrawPending = false;
+  function scheduleRedraw() {
+    if (redrawPending) return;
+    redrawPending = true;
+    requestAnimationFrame(function () { redrawPending = false; drawChart(); });
+  }
+
+  /* ============ 缩放 ============ */
+  function zoomChart(direction) {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    var v = state.chartView;
+    var len = v.end - v.start + 1;
+    if (len <= 0) return;
+    var newLen;
+    if (direction > 0) newLen = Math.max(2, Math.floor(len * 0.7));
+    else newLen = Math.min(pts.length, Math.ceil(len / 0.7) + 1);
+    if (newLen === len) return;
+    var center = (v.start + v.end) / 2;
+    var newStart = Math.round(center - newLen / 2);
+    var newEnd = newStart + newLen - 1;
+    if (newStart < 0) { newStart = 0; newEnd = newStart + newLen - 1; }
+    if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - newLen + 1); }
+    state.chartView = { start: newStart, end: newEnd };
+    updateRangeInfo();
+    drawChart();
+  }
+  function resetZoom() {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    state.chartView = { start: 0, end: pts.length - 1 };
+    updateRangeInfo();
+    drawChart();
+  }
+  zoomInBtn.addEventListener('click', function () { zoomChart(1); });
+  zoomOutBtn.addEventListener('click', function () { zoomChart(-1); });
+  zoomResetBtn.addEventListener('click', resetZoom);
+
+  /* ============ 手势 ============ */
+  var gesture = { mode: null, startX: 0, startView: null, startDist: 0 };
+  function getTouchDist(t1, t2) {
+    var dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  trendChart.addEventListener('touchstart', function (e) {
+    var pts = state.trendPoints || [];
+    if (!pts.length) return;
+    if (e.touches.length === 2) {
+      gesture.mode = 'zoom';
+      gesture.startDist = getTouchDist(e.touches[0], e.touches[1]);
+      gesture.startView = { start: state.chartView.start, end: state.chartView.end };
+    } else if (e.touches.length === 1) {
+      gesture.mode = 'pan';
+      gesture.startX = e.touches[0].clientX;
+      gesture.startView = { start: state.chartView.start, end: state.chartView.end };
+    }
+  }, { passive: false });
+  trendChart.addEventListener('touchmove', function (e) {
+    var pts = state.trendPoints || [];
+    if (!pts.length || !gesture.mode || !gesture.startView) return;
+    e.preventDefault();
+    var v = state.chartView;
+    if (gesture.mode === 'zoom' && e.touches.length === 2) {
+      var dist = getTouchDist(e.touches[0], e.touches[1]);
+      if (gesture.startDist < 1) return;
+      var ratio = gesture.startDist / dist;
+      var origLen = gesture.startView.end - gesture.startView.start + 1;
+      var newLen = Math.max(2, Math.min(pts.length, Math.round(origLen * ratio)));
+      var origCenter = (gesture.startView.start + gesture.startView.end) / 2;
+      var newStart = Math.round(origCenter - newLen / 2);
+      var newEnd = newStart + newLen - 1;
+      if (newStart < 0) { newStart = 0; newEnd = newStart + newLen - 1; }
+      if (newEnd > pts.length - 1) { newEnd = pts.length - 1; newStart = Math.max(0, newEnd - newLen + 1); }
+      v.start = newStart; v.end = newEnd;
+      updateRangeInfo(); scheduleRedraw();
+    } else if (gesture.mode === 'pan' && e.touches.length === 1) {
+      var dx = e.touches[0].clientX - gesture.startX;
+      var size = computeCanvasSize();
+      var padL = 46, padR = 22;
+      if (size.w < 400) { padL = 40; padR = 14; }
+      var plotW = Math.max(40, size.w - padL - padR);
+      var origLen2 = gesture.startView.end - gesture.startView.start + 1;
+      if (origLen2 >= pts.length) return;
+      var step = plotW / Math.max(1, origLen2 - 1);
+      var offsetIndex = Math.round(-dx / step);
+      var ns = gesture.startView.start + offsetIndex;
+      var ne = gesture.startView.end + offsetIndex;
+      if (ns < 0) { ns = 0; ne = origLen2 - 1; }
+      if (ne > pts.length - 1) { ne = pts.length - 1; ns = Math.max(0, ne - origLen2 + 1); }
+      v.start = ns; v.end = ne;
+      updateRangeInfo(); scheduleRedraw();
+    }
+  }, { passive: false });
+  function endGesture() { gesture.mode = null; gesture.startView = null; gesture.startDist = 0; }
+  trendChart.addEventListener('touchend', endGesture);
+  trendChart.addEventListener('touchcancel', endGesture);
+
+  trendChart.addEventListener('wheel', function (e) {
+    if (!state.trendPoints || !state.trendPoints.length) return;
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    if (e.deltaY < 0) zoomChart(1); else zoomChart(-1);
+  }, { passive: false });
+
+  var mouseDrag = { active: false, startX: 0, startView: null };
+  trendChart.addEventListener('mousedown', function (e) {
+    if (!state.trendPoints || !state.trendPoints.length) return;
+    mouseDrag.active = true;
+    mouseDrag.startX = e.clientX;
+    mouseDrag.startView = { start: state.chartView.start, end: state.chartView.end };
+    trendChart.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!mouseDrag.active || !mouseDrag.startView) return;
+    var pts = state.trendPoints || [];
+    var origLen = mouseDrag.startView.end - mouseDrag.startView.start + 1;
+    if (origLen >= pts.length) return;
+    var dx = e.clientX - mouseDrag.startX;
+    var size = computeCanvasSize();
+    var padL = 46, padR = 22;
+    if (size.w < 400) { padL = 40; padR = 14; }
+    var plotW = Math.max(40, size.w - padL - padR);
+    var step = plotW / Math.max(1, origLen - 1);
+    var offsetIndex = Math.round(-dx / step);
+    var ns = mouseDrag.startView.start + offsetIndex;
+    var ne = mouseDrag.startView.end + offsetIndex;
+    if (ns < 0) { ns = 0; ne = origLen - 1; }
+    if (ne > pts.length - 1) { ne = pts.length - 1; ns = Math.max(0, ne - origLen + 1); }
+    state.chartView.start = ns;
+    state.chartView.end = ne;
+    updateRangeInfo();
+    scheduleRedraw();
+  });
+  window.addEventListener('mouseup', function () {
+    if (mouseDrag.active) {
+      mouseDrag.active = false;
+      mouseDrag.startView = null;
+      trendChart.style.cursor = '';
+    }
+  });
+
+  function observeChartResize() {
+    var cb = function () {
+      if (!state.trendPoints || !state.trendPoints.length) return;
+      if (trendResultPanel.hidden) return;
+      scheduleRedraw();
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+      try { var ro = new ResizeObserver(cb); ro.observe(chartWrap); } catch (e) {}
+    }
+    window.addEventListener('resize', cb);
+    window.addEventListener('orientationchange', function () { setTimeout(cb, 250); });
+  }
+
+  /* ============ 趋势统计 ============ */
+  function renderTrendStats(points, errors) {
+    var n = points.length;
+    var scores = points.map(function (p) { return p.total; });
+    var sum = scores.reduce(function (a, b) { return a + b; }, 0);
+    var avg = n ? sum / n : 0;
+    var maxV = scores.length ? Math.max.apply(null, scores) : 0;
+    var minV = scores.length ? Math.min.apply(null, scores) : 0;
+    var maxIdx = scores.indexOf(maxV), minIdx = scores.indexOf(minV);
+    var variance = 0;
+    for (var i = 0; i < n; i++) variance += (scores[i] - avg) * (scores[i] - avg);
+    variance = n ? variance / n : 0;
+    var std = Math.sqrt(variance);
+    var slope = 0;
+    if (n > 1) {
+      var xSum = 0, ySum = 0, xySum = 0, x2Sum = 0;
+      for (var j = 0; j < n; j++) { var x = j, y = scores[j]; xSum += x; ySum += y; xySum += x * y; x2Sum += x * x; }
+      var denom = n * x2Sum - xSum * xSum;
+      if (denom !== 0) slope = (n * xySum - xSum * ySum) / denom;
+    }
+    var trendText;
+    if (n < 2) trendText = '数据点不足';
+    else if (slope > 1) trendText = '明显上升';
+    else if (slope > 0.3) trendText = '略有上升';
+    else if (slope < -1) trendText = '明显下降';
+    else if (slope < -0.3) trendText = '略有下降';
+    else trendText = '基本平稳';
+    var waveText;
+    if (n < 2) waveText = '数据点不足';
+    else if (std < 3) waveText = '非常稳定';
+    else if (std < 7) waveText = '比较稳定';
+    else if (std < 12) waveText = '波动较大';
+    else waveText = '波动很大';
+    var html = '';
+    html += statBox('有效次数', n, ' 次');
+    html += statBox('平均分', fmt1(avg), ' 分');
+    html += statBox('最高分', fmt(maxV), ' 分');
+    html += statBox('最低分', fmt(minV), ' 分');
+    html += statBox('标准差', fmt2(std), '');
+    html += statBox('波动幅度', fmt(maxV - minV), ' 分');
+    trendStats.innerHTML = html;
+    var parts = [];
+    parts.push('趋势：<b>' + trendText + '</b>（' + (slope >= 0 ? '+' : '') + fmt2(slope) + ' 分 / 次）');
+    parts.push('起伏：<b>' + waveText + '</b>（标准差 ' + fmt2(std) + '）');
+    if (maxIdx >= 0 && points[maxIdx]) parts.push('最高：<b>' + fmt(maxV) + '</b> 分（' + points[maxIdx].fullLabel + '）');
+    else parts.push('最高：<b>' + fmt(maxV) + '</b> 分');
+    if (minIdx >= 0 && points[minIdx]) parts.push('最低：<b>' + fmt(minV) + '</b> 分（' + points[minIdx].fullLabel + '）');
+    else parts.push('最低：<b>' + fmt(minV) + '</b> 分');
+    var text = parts.join('　·　');
+    if (errors && errors.length) {
+      text += '<br><span style="color:#8b95a7;font-size:12.5px;">另有 ' + errors.length +
+        ' 个文件未能读取或未找到该学生（' + errors.map(function (e) { return e.id; }).join('、') + '）</span>';
+    }
+    trendSummary.innerHTML = text;
+  }
+
+  /* ============ 事件绑定 ============ */
+  loadBtn.addEventListener('click', handleLoad);
+  classBtn.addEventListener('click', doClassQuery);
+  searchBtn.addEventListener('click', doSearch);
+  trendStartBtn.addEventListener('click', startTrendQuery);
+
+  dateInput.addEventListener('input', function () {
+    var v = dateInput.value.replace(/[\\/:*?"<>|]/g, '');
+    if (v !== dateInput.value) dateInput.value = v;
+  });
+  dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') handleLoad(); });
+  classInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doClassQuery(); });
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+  idInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+  trendName.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
+  trendId.addEventListener('keydown', function (e) { if (e.key === 'Enter') startTrendQuery(); });
+
+  pickFile.addEventListener('click', function () { fileInput.value = ''; fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    var name = f.name || '';
+    setMsg(loadMsg, '正在读取 ' + name + '…', 'info');
+    rawTableWrap.innerHTML = ''; resultEl.innerHTML = '';
+    classPanel.hidden = true; searchPanel.hidden = true; state.sheet = null;
+    classCharts.hidden = true; classChartData = null;
+    var reader = new FileReader();
+    reader.onload = function (ev) { fileInput.value = ''; processBuffer(ev.target.result, name); };
+    reader.onerror = function () {
+      fileInput.value = '';
+      var err = reader.error;
+      setMsg(loadMsg, '读取文件失败：' + translateError({ message: (err && err.message) ? err.message : '无法访问该文件' }), 'error');
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  /* ============ URL 参数 ============ */
+  (function initFromQuery() {
+    var q = new URLSearchParams(location.search);
+    var f = sanitizeFileName(q.get('file') || q.get('date') || '');
+    var n = q.get('name') || '', c = q.get('class') || '';
+    if (f) {
+      dateInput.value = f; handleLoad();
+      if (n || c) {
+        var timer = setInterval(function () {
+          if (state.sheet) {
+            clearInterval(timer);
+            if (c) { classInput.value = c; doClassQuery(); }
+            if (n) { nameInput.value = n; doSearch(); }
+          }
+        }, 120);
+        setTimeout(function () { clearInterval(timer); }, 8000);
+      }
+    }
+  })();
+
+  /* ============ 启动 ============ */
+  observeChartResize();
+  loadNotice();
+  loadTOC();
+  loadIdName();
+  loadShortcuts();
+  loadGithubConfig().then(function () {
+    uploadVisitInfo().catch(function (e) {
+      showToast('访问记录上传失败', translateError(e), 'error', 8000);
+    });
+  }).catch(function (e) {
+    showToast('GitHub 配置读取失败', translateError(e) + '（已跳过访问记录上传）', 'error', 10000);
+  });
+  applyRoute();
+  applyIdNameState();
+})();
