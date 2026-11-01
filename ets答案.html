@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U3 词汇 & 短文填空 · 答案册</title>
+<style>
+  :root{
+    --bg:#f5f6fb;
+    --card:#fff;
+    --ink:#1f2937;
+    --sub:#6b7280;
+    --brand:#4f46e5;
+    --ok:#0f9d58;
+    --okbg:#eaf8f0;
+    --line:#e6e8f0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;padding:26px 16px 64px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:var(--ink);line-height:1.75;
+    background:
+      radial-gradient(900px 420px at 8% -12%, #e5e9ff 0%, rgba(229,233,255,0) 62%),
+      radial-gradient(700px 380px at 100% 0%, #e6f7f0 0%, rgba(230,247,240,0) 60%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px;margin:0 auto;}
+
+  header h1{font-size:22px;margin:0 0 6px;letter-spacing:.3px;}
+  header h1 span{color:var(--brand);}
+  header p{margin:0;color:var(--sub);font-size:14px;}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 26px;}
+  .btn{
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:8px 16px;border-radius:10px;font-size:14px;cursor:pointer;
+    transition:.18s;font-weight:500;font-family:inherit;
+  }
+  .btn:hover{border-color:var(--brand);color:var(--brand);transform:translateY(-1px);box-shadow:0 6px 16px rgba(79,70,229,.12);}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .btn.primary:hover{background:#4338ca;border-color:#4338ca;color:#fff;}
+
+  .section{margin-bottom:34px;}
+  .sec-head{margin-bottom:14px;}
+  .sec-head h2{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .sec-head h2::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--brand);display:inline-block;}
+  .sec-head .desc{margin:0;color:var(--sub);font-size:13px;}
+
+  .item{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:12px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+    transition:border-color .18s, box-shadow .18s, transform .18s;
+  }
+  .item:hover{border-color:#c9cdf0;box-shadow:0 8px 22px rgba(79,70,229,.09);transform:translateY(-1px);}
+
+  .q{display:flex;align-items:flex-start;}
+  .no{
+    flex:0 0 auto;width:24px;height:24px;margin:2px 10px 0 0;border-radius:50%;
+    background:#eef0ff;color:var(--brand);font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .qtext{flex:1;font-size:15px;}
+  .zh{color:var(--sub);font-size:13px;margin-top:4px;}
+  .gap{
+    display:inline-block;min-width:48px;height:1.1em;
+    border-bottom:1.6px solid #c3c7e0;margin:0 3px;vertical-align:-2px;
+  }
+
+  .hint{font-size:12px;color:#9aa0b4;margin-top:8px;padding-left:34px;}
+  .item.show .hint{display:none;}
+
+  .answer{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease,margin .3s ease;}
+  .item.show .answer{max-height:240px;opacity:1;margin-top:10px;}
+  .ans-box{
+    display:flex;align-items:flex-start;gap:10px;
+    background:var(--okbg);border-left:3px solid var(--ok);
+    border-radius:0 10px 10px 0;padding:8px 14px;
+  }
+  .tag-ans{
+    flex:0 0 auto;font-size:11px;font-weight:700;color:#fff;background:var(--ok);
+    border-radius:6px;padding:1px 8px;margin-top:4px;letter-spacing:.5px;
+  }
+  .ans-text{font-size:15px;font-weight:600;color:#0b7a45;word-break:break-word;}
+
+  /* 短文填空 */
+  .passage p{font-size:15px;margin:0 0 12px;text-align:justify;}
+  .blank{
+    display:inline-block;min-width:54px;text-align:center;
+    border-bottom:1.6px solid #c3c7e0;color:#9aa0b4;font-weight:600;
+    padding:0 2px;transition:.22s;
+  }
+  .cloze.show .blank{
+    border-bottom-color:var(--ok);color:#0b7a45;background:var(--okbg);
+    border-radius:5px 5px 0 0;padding:0 6px;
+  }
+  .keytable{max-height:0;opacity:0;overflow:hidden;transition:max-height .45s ease,opacity .3s ease,margin .3s;}
+  .cloze.show .keytable{max-height:800px;opacity:1;margin-top:16px;}
+  .keytable h3{font-size:13px;color:var(--sub);margin:0 0 10px;font-weight:600;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+  .key{
+    background:#f7f8fc;border:1px solid var(--line);border-radius:10px;
+    padding:7px 10px;font-size:13px;display:flex;gap:8px;align-items:baseline;
+  }
+  .key b{color:var(--brand);font-size:12px;}
+  .key span{color:#0b7a45;font-weight:600;}
+
+  footer{text-align:center;color:#9aa0b4;font-size:12px;margin-top:44px;}
+
+  @media (max-width:520px){
+    .qtext{font-size:14.5px;}
+    .passage p{font-size:14.5px;}
+    .gap{min-width:38px;}
+    .blank{min-width:44px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>U3 单元词汇 · <span>答案册</span></h1>
+    <p>点击任意题目卡片即可展开 / 收起答案</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn primary" id="showAll">显示全部答案</button>
+    <button class="btn" id="hideAll">隐藏全部答案</button>
+  </div>
+
+  <div id="app"></div>
+
+  <footer>共 15 道单句 / 完成句子题 + 10 个短文填空 = 25 个答案点</footer>
+</div>
+
+<script>
+/* ================= 数据区 ================= */
+
+const SECTIONS = [
+  {
+    title: "一、单元词汇",
+    desc: "根据所给首字母或中文提示，用本单元所学单词完成句子。（每空限填一词）",
+    items: [
+      { q: `After two hours' running, she didn't even have the ______ (力量，体力) to stand up.`, a: "strength" },
+      { q: `Too hot outside, the athletes are still training, ______ (流汗).`, a: "sweating" },
+      { q: `He is not asleep, he's just ______ (假装).`, a: "pretending" },
+      { q: `Larry was doubtful about his ______ (适当、适合) for the job.`, a: "fitness" },
+      { q: `With the help of my friends, I have learned to ______ (控制，克服) the fear of heights.`, a: "master" },
+      { q: `As the saying goes, f______ is the mother of success.`, a: "failure" },
+      { q: `Your headache is mainly due to s______. So relax!`, a: "stress" },
+      { q: `Jim had c______ in the Math quiz by using a calculator.`, a: "cheated" },
+      { q: `He won a silver m______ at the Asian Championship.`, a: "medal" },
+      { q: `Two people altogether were seriously i______ in the car crash.`, a: "injured" }
+    ]
+  },
+  {
+    title: "二、话题知识：体育活动",
+    desc: "根据中文提示，用英文补全句子。",
+    items: [
+      {
+        q: `Winter hasn't arrived, but children have got the equipment ready and ____ ____ ____ ____ skiing.`,
+        zh: `冬天还没到，但是孩子们已经准备好了装备，迫不及待地想去滑雪。`,
+        a: `can't wait to go`
+      },
+      {
+        q: `I hope you are well prepared for any challenges that will ____ ____.`,
+        zh: `我希望你对出现的任何挑战都有充分的准备。`,
+        a: `come along`
+      },
+      {
+        q: `No matter how busy he is, he sets aside one hour ____ ____ ____ in the gym every day.`,
+        zh: `不管多忙，他每天都要腾出一小时的时间去健身房锻炼。`,
+        a: `to work out / for working out`
+      },
+      {
+        q: `I thought he was too old to get to the top of the mountain, but he ____ ____ at last.`,
+        zh: `我原以为他年纪大爬不到山顶，但他最后爬上去了。`,
+        a: `made it`
+      },
+      {
+        q: `I will give you some advice about ____ ____ ____ ____ and keep fit.`,
+        zh: `我将给你提一些关于如何减肥以及保持健康的建议。`,
+        a: `how to lose weight`
+      }
+    ]
+  }
+];
+
+const CLOZE_ANSWERS = [
+  "which", "regularly", "agreed", "will be allowed", "in",
+  "the", "remains", "building", "stadiums / stadia", "to host"
+];
+
+const PASSAGE = [
+  `The ancient Olympic Games were held every four years only in Greece. The modern Olympic Games,
+   <span class="blank" data-i="1">(1)</span> include the Winter and the Summer Olympics, are held every four years
+   <span class="blank" data-i="2">(2)</span> (regular). The Winter Olympics are usually held two years before the
+   Summer Games. If the athletes have reached the <span class="blank" data-i="3">(3)</span> (agree) standard for
+   their event, they <span class="blank" data-i="4">(4)</span> (allow) to take part in the Olympic Games. Nowadays
+   women can compete <span class="blank" data-i="5">(5)</span> the games and there are more events in the modern
+   Olympics. Despite some differences between the ancient and modern Olympic Games,
+   <span class="blank" data-i="6">(6)</span> motto “Swifter, Higher and Stronger”
+   <span class="blank" data-i="7">(7)</span> (remain) unchangeable.`,
+
+  `A lot of money will be spent in <span class="blank" data-i="8">(8)</span> (build) a special village, a main
+   reception building, several <span class="blank" data-i="9">(9)</span> (stadium) and a gymnasium for each
+   Olympics. Every country thinks that being chosen <span class="blank" data-i="10">(10)</span> (host) the Olympic
+   Games is a great responsibility and honor.`
+];
+
+/* ================= 渲染区 ================= */
+
+const app = document.getElementById('app');
+
+/** 统一控制一张卡片的展开 / 收起 */
+function setItem(card, on){
+  card.classList.toggle('show', on);
+  // 短文填空：同步更新空位文字
+  card.querySelectorAll('.blank[data-i]').forEach(b => {
+    const i = Number(b.dataset.i);
+    if (!i) return;
+    b.textContent = on ? `(${i}) ${CLOZE_ANSWERS[i - 1]}` : `(${i})`;
+  });
+}
+
+/* 1. 单句题 + 完成句子题 */
+SECTIONS.forEach(sec => {
+  const sectionEl = document.createElement('section');
+  sectionEl.className = 'section';
+  sectionEl.innerHTML = `
+    <div class="sec-head">
+      <h2>${sec.title}</h2>
+      <p class="desc">${sec.desc}</p>
+    </div>`;
+
+  const list = document.createElement('div');
+  list.className = 'list';
+
+  sec.items.forEach((it, i) => {
+    const card = document.createElement('div');
+    card.className = 'item';
+    // 把连续下划线替换成空位样式
+    const qhtml = it.q.replace(/_{3,}/g, '<span class="gap"></span>');
+    const zh = it.zh ? `<div class="zh">${it.zh}</div>` : '';
+
+    card.innerHTML = `
+      <div class="q">
+        <div class="no">${i + 1}</div>
+        <div class="qtext">${qhtml}${zh}</div>
+      </div>
+      <div class="answer">
+        <div class="ans-box">
+          <span class="tag-ans">答案</span>
+          <span class="ans-text">${it.a}</span>
+        </div>
+      </div>
+      <div class="hint">👆 点击查看答案</div>`;
+
+    card.addEventListener('click', () => setItem(card, !card.classList.contains('show')));
+    list.appendChild(card);
+  });
+
+  sectionEl.appendChild(list);
+  app.appendChild(sectionEl);
+});
+
+/* 2. 短文填空 */
+(function renderCloze(){
+  const sectionEl = document.createElement('section');
+  sectionEl.className = 'section';
+  sectionEl.innerHTML = `
+    <div class="sec-head">
+      <h2>三、短文填空</h2>
+      <p class="desc">阅读下面短文，在空白处填入 1 个适当的单词或用括号内单词的正确形式填空。</p>
+    </div>`;
+
+  const card = document.createElement('div');
+  card.className = 'item cloze';
+
+  const keyGrid = CLOZE_ANSWERS
+    .map((a, i) => `<div class="key"><b>${i + 1}</b><span>${a}</span></div>`)
+    .join('');
+
+  card.innerHTML = `
+    <div class="passage">
+      ${PASSAGE.map(p => `<p>${p}</p>`).join('')}
+    </div>
+    <div class="hint">👆 点击卡片查看答案</div>
+    <div class="keytable">
+      <h3>答案速查</h3>
+      <div class="grid">${keyGrid}</div>
+    </div>`;
+
+  card.addEventListener('click', () => setItem(card, !card.classList.contains('show')));
+  sectionEl.appendChild(card);
+  app.appendChild(sectionEl);
+})();
+
+/* 3. 顶部按钮 */
+document.getElementById('showAll').addEventListener('click', () => {
+  document.querySelectorAll('.item').forEach(c => setItem(c, true));
+});
+document.getElementById('hideAll').addEventListener('click', () => {
+  document.querySelectorAll('.item').forEach(c => setItem(c, false));
+});
+</script>
+</body>
+</html>
