@@ -1,29 +1,6 @@
 {
-  "count": 249,
+  "count": 250,
   "entries": [
-    {
-      "localTime": "Sun Nov 01 2026 20:48:07 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-11-01T12:48:07.070Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 13; M2102J2SC Build/TKQ1.221114.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.189 Mobile Safari/537.36 XWEB/1500205 MMWEBSDK/20260902 MMWEBID/377 REV/7897f2409f3b95b3ca23fc9235c8997b2ae13726 MicroMessenger/8.0.79.3200(0x28004F39) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 8,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "400x867",
-      "availScreen": "400x867",
-      "colorDepth": 24,
-      "pixelRatio": 2.700000047683716,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Sun Nov 01 2026 21:11:20 GMT+0800 (中国标准时间)",
       "timestamp": "2026-11-01T13:11:20.510Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
+    },
+    {
+      "localTime": "Sat Nov 07 2026 19:45:09 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-11-07T11:45:09.596Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.80(0x1800502c) NetType/WIFI Language/zh_CN",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "390x844",
+      "availScreen": "390x844",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
