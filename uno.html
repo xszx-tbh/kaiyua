@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>UNO · 联机</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0d1b2a;color:#fff;height:100vh;overflow:hidden;user-select:none}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column}
+.hidden{display:none!important}
+
+/* 大厅 */
+#lobby{justify-content:center;align-items:center;background:radial-gradient(circle at 50% 30%,#1b3a5c,#0a1420)}
+.lobby-box{width:86%;max-width:340px;background:rgba(0,0,0,.35);border-radius:20px;padding:28px 22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.lobby-box h1{font-size:22px;text-align:center}
+.hint{text-align:center;font-size:12px;color:#8fb8d8}
+input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none}
+input::placeholder{color:rgba(255,255,255,.4)}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-size:15px;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:#ffb703;color:#1a1a1a;font-weight:700}
+.btn.ghost{background:rgba(255,255,255,.1)}
+.btn.big{padding:14px;font-size:16px}
+.btn:disabled{opacity:.35}
+.divider{display:flex;align-items:center;gap:10px;color:#7fa8c8;font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15)}
+
+/* 游戏 */
+#game{background:radial-gradient(circle at 50% 15%,#12324f,#0a1420)}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:13px;background:rgba(0,0,0,.3);flex-shrink:0;gap:8px}
+.topbar b{color:#ffb703}
+.topbar .right{display:flex;gap:12px;color:#8fb8d8}
+
+.opponents{display:flex;justify-content:center;gap:8px;padding:8px 10px;flex-wrap:wrap;flex-shrink:0;min-height:70px}
+.opp{background:rgba(0,0,0,.3);border-radius:12px;padding:8px 14px;font-size:12px;text-align:center;min-width:82px;position:relative;transition:outline .2s}
+.opp .name{font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.opp .count{color:#ffb703}
+.opp.active{outline:2px solid #ffb703;background:rgba(255,183,3,.12)}
+.opp .uno-badge{color:#ff5252;font-weight:800;font-size:11px;margin-top:3px;animation:pulse .7s infinite alternate}
+@keyframes pulse{from{opacity:.45}to{opacity:1}}
+
+.center{flex:1;display:flex;align-items:center;justify-content:center;gap:28px;min-height:0;position:relative}
+.pile-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+#discardPile{min-height:120px;display:flex;align-items:center;justify-content:center}
+.color-indicator{width:44px;height:10px;border-radius:5px;background:rgba(255,255,255,.15);transition:background .3s}
+.color-indicator.red{background:#e53935}
+.color-indicator.yellow{background:#fdd835}
+.color-indicator.green{background:#43a047}
+.color-indicator.blue{background:#1e88e5}
+
+.deck-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.deck-back{width:72px;height:104px;border-radius:8px;background:repeating-linear-gradient(45deg,#1a1a1a,#1a1a1a 6px,#3a3a3a 6px,#3a3a3a 12px);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.5)}
+.deck-count{font-size:12px;color:#8fb8d8}
+
+.myarea{flex-shrink:0;padding:0 0 10px}
+#myHand{display:flex;overflow-x:auto;overflow-y:visible;padding:26px 30px 6px 14px;min-height:118px;align-items:flex-end;scrollbar-width:none}
+#myHand::-webkit-scrollbar{display:none}
+#myHand .card{flex:0 0 auto;margin-right:-20px}
+#myHand .card:last-child{margin-right:0}
+
+.card{width:52px;height:76px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:800;color:#fff;box-shadow:0 3px 6px rgba(0,0,0,.35);position:relative;border:3px solid #fff;transition:transform .12s,box-shadow .12s;cursor:pointer}
+.card.red{background:#e53935}
+.card.yellow{background:#fdd835;color:#333}
+.card.green{background:#43a047}
+.card.blue{background:#1e88e5}
+.card.wild{background:linear-gradient(135deg,#e53935 0%,#fdd835 33%,#43a047 66%,#1e88e5 100%);font-size:19px}
+#discardPile .card{width:84px;height:120px;font-size:40px;cursor:default;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+#discardPile .card.wild{font-size:30px}
+
+#myHand .card.playable::after{content:'';position:absolute;bottom:3px;right:3px;width:7px;height:7px;border-radius:50%;background:#7cff6b;box-shadow:0 0 6px #7cff6b}
+#myHand .card.selected{transform:translateY(-20px);z-index:10;outline:3px solid #ffb703;box-shadow:0 10px 18px rgba(0,0,0,.55)}
+
+.actions{display:flex;gap:10px;justify-content:center;padding:6px 10px 0;min-height:50px;align-items:center;flex-wrap:wrap}
+.uno-btn{background:#e53935;color:#fff;font-weight:800;letter-spacing:1px}
+.uno-btn:disabled{background:rgba(255,255,255,.15);color:rgba(255,255,255,.5)}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:20}
+.dialog{background:#13324d;border-radius:18px;padding:24px 22px;min-width:260px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.dialog h2,.dialog h3{margin-bottom:16px}
+.color-btns{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.color-btn{width:100%;height:60px;border-radius:12px;border:3px solid rgba(255,255,255,.4);cursor:pointer;transition:transform .1s}
+.color-btn:active{transform:scale(.95)}
+.color-btn.red{background:#e53935}
+.color-btn.yellow{background:#fdd835}
+.color-btn.green{background:#43a047}
+.color-btn.blue{background:#1e88e5}
+
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:rgba(0,0,0,.85);padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:30;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- 大厅 -->
+<div id="lobby" class="screen">
+  <div class="lobby-box">
+    <h1>🎴 联机 UNO</h1>
+    <p class="hint">同一 WiFi · 2–4 人 · 房主当主机</p>
+    <input id="nameInput" maxlength="12" placeholder="你的昵称" autocomplete="off">
+    <button id="btnCreate" class="btn primary big">创建房间（我是房主）</button>
+    <div class="divider"><span>或</span></div>
+    <input id="codeInput" maxlength="4" inputmode="numeric" placeholder="输入 4 位房间号" autocomplete="off">
+    <button id="btnJoin" class="btn big">加入房间</button>
+  </div>
+</div>
+
+<!-- 游戏 -->
+<div id="game" class="screen hidden">
+  <div class="topbar">
+    <span>房间 <b id="roomCode">----</b></span>
+    <span id="phaseText"></span>
+    <span class="right">
+      <span id="directionText">↻</span>
+      <span>牌堆 <b id="deckCount">0</b></span>
+    </span>
+  </div>
+
+  <div class="opponents" id="opponents"></div>
+
+  <div class="center">
+    <div class="pile-wrap">
+      <div id="discardPile"></div>
+      <div class="color-indicator" id="colorIndicator"></div>
+    </div>
+    <div class="deck-wrap" id="deckPile">
+      <div class="deck-back"></div>
+    </div>
+  </div>
+
+  <div class="myarea">
+    <div id="myHand"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnStart" style="display:none">开始游戏</button>
+      <button class="btn ghost" id="btnDraw" style="display:none">摸一张</button>
+      <button class="btn primary" id="btnPlay" style="display:none">出牌</button>
+      <button class="btn uno-btn" id="btnUno" style="display:none">UNO!</button>
+    </div>
+  </div>
+</div>
+
+<!-- 选色 -->
+<div id="colorPanel" class="overlay hidden">
+  <div class="dialog">
+    <h3>选择颜色</h3>
+    <div class="color-btns">
+      <button class="color-btn red" data-color="red"></button>
+      <button class="color-btn yellow" data-color="yellow"></button>
+      <button class="color-btn green" data-color="green"></button>
+      <button class="color-btn blue" data-color="blue"></button>
+    </div>
+  </div>
+</div>
+
+<!-- 结算 -->
+<div id="resultPanel" class="overlay hidden">
+  <div class="dialog">
+    <h2 id="resultText"></h2>
+    <button class="btn primary" id="btnRestart">再来一局</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* ===================== 全局状态 ===================== */
+let isHost = false;
+let myIndex = -1;
+let myName = '';
+let myHand = [];
+let state = null;
+let selectedId = null;
+let pendingWildId = null;
+
+let host = null;   // { code, peer, room }
+let client = null; // { peer, conn, code }
+
+/* ===================== 牌组与规则（纯函数） ===================== */
+const COLORS = ['red','yellow','green','blue'];
+const COLOR_NAMES = { red:'红', yellow:'黄', green:'绿', blue:'蓝' };
+
+function buildDeck(){
+  let id = 0;
+  const deck = [];
+  const add = (color, value) => deck.push({ id: id++, color, value });
+  for (const c of COLORS){
+    add(c, '0');
+    for (let n = 1; n <= 9; n++){ add(c, String(n)); add(c, String(n)); }
+    for (const v of ['skip','reverse','draw2']){ add(c, v); add(c, v); }
+  }
+  for (let i = 0; i < 4; i++){ add('wild','wild'); add('wild','wild4'); }
+  return deck;
+}
+
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function canPlay(card, currentColor, currentValue){
+  if (!card) return false;
+  if (card.color === 'wild') return true;
+  if (card.color === currentColor) return true;
+  if (card.value === currentValue) return true;
+  return false;
+}
+
+function cardLabel(card){
+  if (!card) return '';
+  switch (card.value){
+    case 'skip': return '⊘';
+    case 'reverse': return '⇄';
+    case 'draw2': return '+2';
+    case 'wild': return 'W';
+    case 'wild4': return '+4';
+    default: return card.value;
+  }
+}
+
+/* ===================== 房主逻辑 ===================== */
+function createRoom(name, attempt = 0){
+  if (attempt > 8){ toast('创建失败，请检查网络'); return; }
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  const peer = new Peer('uno-' + code, { debug: 0 });
+  let opened = false;
+  peer.on('open', () => { opened = true; initHost(code, name, peer); });
+  peer.on('error', err => {
+    if (!opened && (err.type === 'unavailable-id' || err.type === 'network')){
+      try { peer.destroy(); } catch(e){}
+      setTimeout(() => createRoom(name, attempt + 1), 300);
+    } else if (!opened){
+      toast('创建失败: ' + err.type);
+    }
+  });
+}
+
+function initHost(code, name, peer){
+  isHost = true;
+  myName = name;
+  myIndex = 0;
+  host = {
+    code, peer,
+    room: {
+      code,
+      players: [{ name, hand: [], conn: null, saidUno: false }],
+      phase: 'waiting',
+      deck: [], discard: [],
+      currentColor: null, currentValue: null,
+      direction: 1, turnIndex: 0,
+      winnerIndex: null
+    }
+  };
+  showGame(code);
+  broadcastState();
+  peer.on('connection', conn => {
+    conn.on('data', data => onHostData(conn, data));
+    conn.on('close', () => onClientClose(conn));
+    conn.on('error', () => onClientClose(conn));
+  });
+}
+
+function onHostData(conn, data){
+  if (!host) return;
+  if (data.t === 'join'){
+    if (host.room.phase !== 'waiting'){ conn.send({ t:'error', msg:'游戏已开始' }); return; }
+    if (host.room.players.length >= 4){ conn.send({ t:'error', msg:'房间已满（最多 4 人）' }); return; }
+    let name = (data.name || '').trim() || '玩家';
+    if (host.room.players.some(p => p.name === name)) name += '2';
+    const idx = host.room.players.length;
+    host.room.players.push({ name, hand: [], conn, saidUno: false });
+    conn.send({ t:'joined', index: idx, code: host.code });
+    broadcastState();
+    return;
+  }
+  const idx = host.room.players.findIndex(p => p.conn === conn);
+  if (idx === -1) return;
+  applyAction(idx, data);
+}
+
+function getNextIndex(n){
+  const room = host.room;
+  const len = room.players.length;
+  return ((room.turnIndex + room.direction * n) % len + len) % len;
+}
+function advance(n){ host.room.turnIndex = getNextIndex(n); }
+
+function reshuffle(){
+  const room = host.room;
+  if (room.discard.length <= 1) return;
+  const top = room.discard.pop();
+  room.deck = shuffle(room.discard);
+  room.discard = [top];
+}
+
+function drawCardsTo(playerIndex, count){
+  const room = host.room;
+  const p = room.players[playerIndex];
+  for (let i = 0; i < count; i++){
+    if (room.deck.length === 0) reshuffle();
+    if (room.deck.length === 0) break;
+    p.hand.push(room.deck.pop());
+  }
+}
+
+function applyEffect(card){
+  const room = host.room;
+  const len = room.players.length;
+  if (card.value === 'skip'){
+    advance(2);
+  } else if (card.value === 'reverse'){
+    if (len === 2){
+      advance(2);
+    } else {
+      room.direction *= -1;
+      advance(1);
+    }
+  } else if (card.value === 'draw2'){
+    const target = getNextIndex(1);
+    drawCardsTo(target, 2);
+    room.players[target].saidUno = false;
+    advance(2);
+  } else if (card.value === 'wild4'){
+    const target = getNextIndex(1);
+    drawCardsTo(target, 4);
+    room.players[target].saidUno = false;
+    advance(2);
+  } else {
+    advance(1);
+  }
+}
+
+function applyAction(idx, action){
+  if (!host) return;
+  const room = host.room;
+
+  if (action.t === 'play'){
+    if (room.phase !== 'playing' || idx !== room.turnIndex) return;
+    const pos = room.players[idx].hand.findIndex(c => c.id === action.cardId);
+    if (pos === -1) return;
+    const card = room.players[idx].hand[pos];
+    if (!canPlay(card, room.currentColor, room.currentValue)) return;
+    let chosenColor = null;
+    if (card.color === 'wild'){
+      if (!COLORS.includes(action.chosenColor)) return;
+      chosenColor = action.chosenColor;
+    }
+    room.players[idx].hand.splice(pos, 1);
+    room.discard.push(card);
+    room.currentColor = chosenColor || card.color;
+    room.currentValue = card.value;
+
+    room.players.forEach(p => { if (p.hand.length !== 1) p.saidUno = false; });
+
+    if (room.players[idx].hand.length === 0){
+      room.phase = 'over';
+      room.winnerIndex = idx;
+      const winnerName = room.players[idx].name;
+      room.players.forEach(p => {
+        if (p.conn) p.conn.send({ t:'over', winner: winnerName });
+      });
+      showResult(winnerName);
+      broadcastState();
+      return;
+    }
+
+    applyEffect(card);
+    broadcastState();
+  }
+  else if (action.t === 'draw'){
+    if (room.phase !== 'playing' || idx !== room.turnIndex) return;
+    drawCardsTo(idx, 1);
+    room.players[idx].saidUno = false;
+    advance(1);
+    broadcastState();
+  }
+  else if (action.t === 'uno'){
+    if (room.phase !== 'playing') return;
+    room.players[idx].saidUno = true;
+    broadcastState();
+  }
+  else if (action.t === 'restart'){
+    if (room.phase !== 'over') return;
+    if (room.players.length < 2) return;
+    startGame();
+  }
+}
+
+function startGame(){
+  if (!host) return;
+  const room = host.room;
+  if (room.players.length < 2) return;
+
+  room.deck = shuffle(buildDeck());
+  room.discard = [];
+  room.players.forEach(p => { p.hand = []; p.saidUno = false; });
+
+  for (let i = 0; i < 7; i++){
+    room.players.forEach(p => p.hand.push(room.deck.pop()));
+  }
+
+  // 起始牌：必须是数字牌
+  const numIdx = room.deck.findIndex(c => /^\d$/.test(c.value));
+  let first;
+  if (numIdx >= 0) first = room.deck.splice(numIdx, 1)[0];
+  else first = room.deck.pop();
+  room.discard.push(first);
+
+  room.currentColor = first.color;
+  room.currentValue = first.value;
+  room.direction = 1;
+  room.turnIndex = 0;
+  room.winnerIndex = null;
+  room.phase = 'playing';
+
+  hideResult();
+  broadcastState();
+}
+
+function checkWinInBroadcast(){
+  // 已在 applyAction 内处理
+}
+
+function onClientClose(conn){
+  if (!host) return;
+  const idx = host.room.players.findIndex(p => p.conn === conn);
+  if (idx === -1) return;
+  host.room.players.splice(idx, 1);
+  host.room.players.forEach((p, i) => {
+    if (p.conn) p.conn.send({ t:'joined', index: i, code: host.code });
+  });
+  const room = host.room;
+  room.phase = 'waiting';
+  room.players.forEach(p => { p.hand = []; p.saidUno = false; });
+  room.deck = []; room.discard = [];
+  room.currentColor = null; room.currentValue = null;
+  room.winnerIndex = null;
+  room.turnIndex = 0;
+  room.direction = 1;
+  hideResult();
+  broadcastState();
+  toast('有玩家离开，游戏已重置');
+}
+
+function publicState(){
+  const room = host.room;
+  return {
+    code: room.code,
+    phase: room.phase,
+    players: room.players.map((p, i) => ({
+      name: p.name,
+      cardCount: p.hand.length,
+      saidUno: p.saidUno,
+      index: i
+    })),
+    deckCount: room.deck.length,
+    discardTop: room.discard[room.discard.length - 1] || null,
+    currentColor: room.currentColor,
+    currentValue: room.currentValue,
+    direction: room.direction,
+    turnIndex: room.turnIndex,
+    winnerIndex: room.winnerIndex
+  };
+}
+
+function broadcastState(){
+  if (!host) return;
+  const room = host.room;
+  state = publicState();
+
+  const newHand = room.players[0].hand;
+  const oldIds = myHand.map(c => c.id).join(',');
+  const newIds = newHand.map(c => c.id).join(',');
+  myHand = newHand;
+  if (oldIds !== newIds) selectedId = null;
+
+  room.players.forEach(p => {
+    if (p.conn){
+      p.conn.send({ t:'state', state });
+      p.conn.send({ t:'hand', cards: p.hand });
+    }
+  });
+  renderAll();
+}
+
+/* ===================== 客户端逻辑 ===================== */
+function joinRoom(name, code){
+  const peer = new Peer({ debug: 0 });
+  peer.on('open', () => {
+    const conn = peer.connect('uno-' + code, { reliable: true });
+    client = { peer, conn, code };
+    conn.on('open', () => { conn.send({ t:'join', name }); });
+    conn.on('data', data => onClientData(data));
+    conn.on('error', () => toast('连接错误'));
+    conn.on('close', () => toast('与房主断开连接'));
+  });
+  peer.on('error', err => {
+    if (err.type === 'peer-unavailable') toast('房间不存在或房主已离线');
+    else toast('连接失败: ' + err.type);
+  });
+}
+
+function onClientData(data){
+  if (data.t === 'joined'){
+    myIndex = data.index;
+    showGame(data.code);
+    toast('已加入房间');
+  } else if (data.t === 'state'){
+    state = data.state;
+    renderAll();
+  } else if (data.t === 'hand'){
+    const oldIds = myHand.map(c => c.id).join(',');
+    const newIds = data.cards.map(c => c.id).join(',');
+    myHand = data.cards;
+    if (oldIds !== newIds) selectedId = null;
+    renderHand();
+    renderActions();
+  } else if (data.t === 'over'){
+    showResult(data.winner);
+  } else if (data.t === 'error'){
+    toast(data.msg);
+  }
+}
+
+/* ===================== 统一操作入口 ===================== */
+function doAction(action){
+  if (isHost) applyAction(0, action);
+  else if (client && client.conn && client.conn.open) client.conn.send(action);
+}
+
+/* ===================== 渲染 ===================== */
+function showGame(code){
+  document.getElementById('lobby').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  document.getElementById('roomCode').textContent = code;
+}
+
+function renderAll(){
+  if (!state) return;
+  renderTop();
+  renderOpponents();
+  renderCenter();
+  renderHand();
+  renderActions();
+}
+
+function renderTop(){
+  const pt = document.getElementById('phaseText');
+  if (state.phase === 'waiting'){
+    pt.textContent = `等待玩家 (${state.players.length}/4)`;
+  } else if (state.phase === 'playing'){
+    const name = state.players[state.turnIndex]?.name || '';
+    pt.textContent = state.turnIndex === myIndex ? '轮到你出牌' : `轮到 ${name}`;
+  } else if (state.phase === 'over'){
+    pt.textContent = '游戏结束';
+  }
+  document.getElementById('directionText').textContent = state.direction === 1 ? '↻' : '↺';
+  document.getElementById('deckCount').textContent = state.deckCount;
+}
+
+function renderOpponents(){
+  const el = document.getElementById('opponents');
+  el.innerHTML = '';
+  const others = [];
+  for (let i = 0; i < state.players.length; i++){
+    if (i !== myIndex) others.push(i);
+  }
+  others.forEach(idx => {
+    const p = state.players[idx];
+    if (!p) return;
+    const active = state.phase === 'playing' && state.turnIndex === idx;
+    const div = document.createElement('div');
+    div.className = 'opp' + (active ? ' active' : '');
+    div.innerHTML = `
+      <div class="name">${escapeHtml(p.name)}</div>
+      <div class="count">${p.cardCount} 张</div>
+      ${p.saidUno && p.cardCount === 1 ? '<div class="uno-badge">UNO!</div>' : ''}
+    `;
+    el.appendChild(div);
+  });
+}
+
+function makeCardEl(card, interactive){
+  const div = document.createElement('div');
+  div.className = 'card ' + card.color;
+  div.textContent = cardLabel(card);
+  if (interactive){
+    div.dataset.id = card.id;
+    div.onclick = () => toggleSelect(card.id);
+  }
+  return div;
+}
+
+function renderCenter(){
+  const dp = document.getElementById('discardPile');
+  dp.innerHTML = '';
+  if (state.discardTop){
+    dp.appendChild(makeCardEl(state.discardTop, false));
+  }
+  const ci = document.getElementById('colorIndicator');
+  ci.className = 'color-indicator' + (state.currentColor ? ' ' + state.currentColor : '');
+}
+
+function renderHand(){
+  const el = document.getElementById('myHand');
+  el.innerHTML = '';
+  if (!myHand) return;
+  myHand.forEach(card => {
+    const d = makeCardEl(card, true);
+    if (selectedId === card.id) d.classList.add('selected');
+    if (state.phase === 'playing' && state.turnIndex === myIndex &&
+        canPlay(card, state.currentColor, state.currentValue)){
+      d.classList.add('playable');
+    }
+    el.appendChild(d);
+  });
+}
+
+function toggleSelect(id){
+  if (!state || state.phase !== 'playing' || state.turnIndex !== myIndex) return;
+  const card = myHand.find(c => c.id === id);
+  if (!card) return;
+  if (!canPlay(card, state.currentColor, state.currentValue)){
+    toast('这张牌打不了');
+    return;
+  }
+  selectedId = (selectedId === id) ? null : id;
+  renderHand();
+  renderActions();
+}
+
+function renderActions(){
+  if (!state) return;
+  const myTurn = state.phase === 'playing' && state.turnIndex === myIndex;
+  const me = state.players[myIndex] || null;
+
+  const btnStart = document.getElementById('btnStart');
+  const btnDraw = document.getElementById('btnDraw');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnUno = document.getElementById('btnUno');
+
+  if (isHost && state.phase === 'waiting'){
+    btnStart.style.display = 'inline-block';
+    btnStart.disabled = state.players.length < 2;
+    btnStart.textContent = state.players.length < 2
+      ? `等待玩家加入 (${state.players.length}/4)`
+      : `开始游戏 (${state.players.length} 人)`;
+  } else {
+    btnStart.style.display = 'none';
+  }
+
+  if (state.phase === 'playing'){
+    btnDraw.style.display = 'inline-block';
+    btnPlay.style.display = 'inline-block';
+    btnDraw.disabled = !myTurn;
+    btnPlay.disabled = !myTurn || !selectedId;
+  } else {
+    btnDraw.style.display = 'none';
+    btnPlay.style.display = 'none';
+  }
+
+  if (me && me.cardCount === 1 && state.phase === 'playing'){
+    btnUno.style.display = 'inline-block';
+    btnUno.disabled = !!me.saidUno;
+    btnUno.textContent = me.saidUno ? '已喊 UNO' : 'UNO!';
+  } else {
+    btnUno.style.display = 'none';
+  }
+}
+
+/* ===================== 结果与提示 ===================== */
+function showResult(winnerName){
+  document.getElementById('resultText').textContent = `🎉 ${winnerName} 获胜！`;
+  document.getElementById('resultPanel').classList.remove('hidden');
+}
+function hideResult(){
+  document.getElementById('resultPanel').classList.add('hidden');
+}
+
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ===================== 事件绑定 ===================== */
+document.getElementById('btnCreate').onclick = () => {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return toast('请输入昵称');
+  createRoom(name);
+};
+document.getElementById('btnJoin').onclick = () => {
+  const name = document.getElementById('nameInput').value.trim();
+  const code = document.getElementById('codeInput').value.trim();
+  if (!name) return toast('请输入昵称');
+  if (!/^\d{4}$/.test(code)) return toast('请输入 4 位房间号');
+  joinRoom(name, code);
+};
+
+document.getElementById('btnStart').onclick = () => {
+  if (!isHost) return;
+  if (host.room.players.length < 2) return toast('至少需要 2 名玩家');
+  startGame();
+};
+
+document.getElementById('btnDraw').onclick = () => {
+  if (!state || state.phase !== 'playing' || state.turnIndex !== myIndex) return;
+  doAction({ t:'draw' });
+};
+document.getElementById('deckPile').onclick = () => {
+  if (!state || state.phase !== 'playing' || state.turnIndex !== myIndex) return;
+  doAction({ t:'draw' });
+};
+
+document.getElementById('btnPlay').onclick = () => {
+  if (!selectedId) return toast('请先选择一张牌');
+  const card = myHand.find(c => c.id === selectedId);
+  if (!card) return;
+  if (card.color === 'wild'){
+    pendingWildId = selectedId;
+    document.getElementById('colorPanel').classList.remove('hidden');
+  } else {
+    doAction({ t:'play', cardId: selectedId });
+    selectedId = null;
+    renderHand();
+    renderActions();
+  }
+};
+
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.onclick = () => {
+    const color = btn.dataset.color;
+    document.getElementById('colorPanel').classList.add('hidden');
+    if (pendingWildId !== null){
+      doAction({ t:'play', cardId: pendingWildId, chosenColor: color });
+      pendingWildId = null;
+      selectedId = null;
+      renderHand();
+      renderActions();
+    }
+  };
+});
+
+document.getElementById('btnUno').onclick = () => doAction({ t:'uno' });
+
+document.getElementById('btnRestart').onclick = () => {
+  hideResult();
+  doAction({ t:'restart' });
+};
+</script>
+</body>
+</html>
