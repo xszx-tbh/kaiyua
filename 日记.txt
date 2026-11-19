@@ -1,29 +1,6 @@
 {
-  "count": 273,
+  "count": 274,
   "entries": [
-    {
-      "localTime": "Fri Nov 13 2026 14:30:01 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-11-13T06:30:01.078Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 NetType/WIFI MicroMessenger/7.0.20.1781(0x6700143B) WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254200d) XWEB/26073 NT/6.1 Flue",
-      "language": "zh-CN",
-      "languages": "zh-CN,zh",
-      "platform": "Win32",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 6,
-      "deviceMemory": 8,
-      "maxTouchPoints": 0,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "1536x864",
-      "availScreen": "1536x826",
-      "colorDepth": 24,
-      "pixelRatio": 1.25,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Fri Nov 13 2026 17:26:00 GMT+0800 (中国标准时间)",
       "timestamp": "2026-11-13T09:26:00.157Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": "https://weixin110.qq.com/"
+    },
+    {
+      "localTime": "Thu Nov 19 2026 16:25:47 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-11-19T08:25:47.493Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.80(0x1800503b) NetType/4G Language/zh_CN",
+      "language": "zh-CN",
+      "languages": "zh-CN",
+      "platform": "iPhone",
+      "vendor": "Apple Computer, Inc.",
+      "hardwareConcurrency": 4,
+      "deviceMemory": null,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "402x874",
+      "availScreen": "402x874",
+      "colorDepth": 24,
+      "pixelRatio": 3,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": ""
     }
   ]
 }
