@@ -1,18 +1,15 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+<html style="overflow: auto;">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1280">
-<title>随机数抽取器,在线抽号工具</title>
+<title>随机数抽取器,在线抽号工具 - 千千秀字</title>
+<link href="/css/style.css" rel="stylesheet">
 <style>
 #out {
 	font: 100px Arial, Helvetica, sans-serif;
 	text-align: center;
 	background: #fff;
 	-webkit-text-stroke: .01em white;
-	background-size: contain;
-	background-position: center;
-	background-repeat: no-repeat;
 }
 #num {
 	width: 150px;
@@ -38,7 +35,6 @@
 	font-size: 24px;
 	text-align: right;
 	line-height: 1.2;
-	z-index: 999;
 }
 .phone { display: none; }
 .main .phone label {
@@ -52,6 +48,9 @@
 	background: #eee;
 	box-shadow: 1px 1px 1px #eee;
 	margin-bottom: 3px;
+	-ms-user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
 	user-select: none;
 }
 .main .phone input[type=checkbox] { display: none; }
@@ -68,7 +67,11 @@
 	border-left: 2px solid #F90;
 }
 .settings .toggle input[type=checkbox] {
-	height: 0; width: 0; visibility: hidden; margin: 0; padding: 0;
+	height: 0;
+	width: 0;
+	visibility: hidden;
+	margin: 0;
+	padding: 0;
 }
 .settings .toggle { margin: 5px 0; }
 .settings .toggle label {
@@ -87,14 +90,19 @@
 .settings .toggle label:before {
 	content: '';
 	position: absolute;
-	top: 0; left: 0;
+	top: 0;
+	left: 0;
 	transition: transform 0.2s;
-	width: 18px; height: 18px;
+	width: 18px;
+	height: 18px;
 	border-radius: 50%;
 	box-shadow: 0 0 3px rgba(0,0,0,.5);
 	background: #fff;
 }
-.settings .toggle input:checked + label { border-color: #05f; background: #07f; }
+.settings .toggle input:checked + label {
+	border-color: #05f;
+	background: #07f;
+}
 .settings .toggle input:checked + label:before { transform: translateX(30px); }
 .settings .box {
 	background-image: linear-gradient(90deg,#fdb,#ffe,#fff);
@@ -105,37 +113,15 @@
 .settings .getimage { position: relative; }
 .settings #fileinp {
 	position: absolute;
-	left: 0; top: 0;
+	left: 0;
+	top: 0;
 	opacity: 0;
 	width: 5em;
 }
 .settings .manual { margin-left: .5em; }
 #manualtips { font-size: .86em; display: none; }
 #box { display: none; }
-#notes {
-	border: 1px solid #ccc;
-	display: none;
-	max-height: 8em;
-	overflow: auto;
-	padding: 4px;
-	max-width: 540px;
-}
-/* ---- 学号排除区（新增） ---- */
-.exclude-box {
-	max-width: 540px;
-	padding: 8px 10px;
-	margin: 1em 0;
-	background: linear-gradient(90deg,#eaf4ff,#fff);
-	border-left: 2px solid #07f;
-	font-size: 14px;
-	line-height: 1.7;
-}
-.exclude-box .hint { color: #888; font-size: 12px; }
-.exclude-box button {
-	padding: 2px 8px;
-	margin-right: 6px;
-	font-size: 13px;
-}
+#notes { border: 1px solid #ccc; display: none; }
 @media (max-width: 900px) {
 	.pc { display: none; }
 	.phone { display: block; }
@@ -143,613 +129,546 @@
 </style>
 </head>
 <body>
-
-<div class="top">
-	<div class="home"><a href="https://www.qqxiuzi.cn"><b><font color="#F8673D">千</font><font color="#E79C01">千</font><font color="#0EBB00">秀</font><font color="#669FFF">字</font></b></a></div>
-	<div class="nav"><a href="https://www.qqxiuzi.cn/daohang.htm">网站导航</a></div>
-	<div style="clear:both;"></div>
-</div>
-
+<div class="top"><div class="home"><a href="https://www.qqxiuzi.cn"><b><font color="#F8673D">千</font><font color="#E79C01">千</font><font color="#0EBB00">秀</font><font color="#669FFF">字</font></b></a></div><div class="nav"><a href="https://www.qqxiuzi.cn/daohang.htm">网站导航</a></div><div style="clear:both;"></div></div>
 <div class="main" style="height: auto !important;">
-	<div class="title"><h1>随机数抽取</h1></div>
+  <div class="title"><h1>随机数抽取</h1></div>
 
-	<div id="out" style="font-size: 100px;">0</div>
-	<div id="t"></div>
+  <div id="out" style="font-size: 100px;">0</div>
+  <div id="t" style="display: none;"></div>
+  <p align="center"><input type="text" id="num" value="1-999" placeholder="数字范围">
+  <input id="btn" type="button" value="抽取"></p>
+  <div id="notes">已抽取的数字[<b>0</b>]：<br><span>无</span></div>
+  <p>在输入框中填写数字范围，然后点击抽取即可<span id="btntip">（按回车键或空格键亦可）</span>。</p>
 
-	<p align="center">
-		<input type="text" id="num" value="1-999" placeholder="数字范围">
-		<input id="btn" type="button" value="抽取">
-	</p>
+  <div id="screen">
+    <audio id="audio" src="/audio/1.ogg"></audio>
+    <p class="pc"><input id="btn-full" type="button" value="全屏">
+    全屏后使用回车键或空格键抽取。
+    </p>
+    <div class="phone"><input id="btn-full2" type="button" value="全屏">
+      全屏后摇动手机抽取<span style="display:inline-block">(<input id="zd" type="checkbox" value="1"><label for="zd">震动</label>
+    <input id="sy" type="checkbox" value="1"><label for="sy">声音</label>)</span></div>
+  </div>
 
-	<div id="notes">已抽取的数字[<b>0</b>]：<br><span>无</span></div>
+  <div class="settings">设置：<span id="r"></span><br>
+    时延<span id="timeout"><input type="range" max="5000" min="250" value="700" id="settime"><span id="time">0.70</span>秒</span>
+    <label class="manual"><input id="manual" type="checkbox">手动</label><span id="manualtips">（点击按钮或按回车、空格键停止）</span><br>
+    背　景　颜　色　<input type="color" value="#ffffff" id="bc"><br>
+    数字颜色（滚动）<input type="color" value="#000000" id="tc"><br>
+    数字颜色（抽中）<input type="color" value="#ff0000" id="tsc"><br>
+    <div class="toggle">周期内不重复　　　<input id="repeat" type="checkbox" value="1" checked><label for="repeat"></label></div>
+    <div class="toggle">显示已抽取的数字　<input id="note" type="checkbox" value="1"><label for="note"></label></div>
+    <div id="bg">背景图片
+      <label class="getimage" for="fileinp">
+          <input type="button" value="选择图片">
+          <input type="file" id="fileinp" onchange="readImage(this)">
+      </label>
+      <input type="button" value="清除" id="delimage" style="display:none">
+    </div>
+    <div class="box"><label><input id="boxbtn" type="checkbox" value="1">添加全屏提示文字</label><div id="box"><textarea id="tips" placeholder="全屏时显示的文字，可以多行。"></textarea><br>
+    文字颜色
+    <input type="color" value="#000000" id="ttc">&nbsp;
+    <span style="display:inline-block">方位 <select id="position">
+        <option value="top:5px;right:0;text-align:center;">上中</option>
+        <option value="bottom:5px;right:0;text-align:center;">下中</option>
+        <option value="top:5px;left:5px;text-align:left;">左上</option>
+        <option value="top:5px;right:5px;text-align:right;">右上</option>
+        <option value="bottom:5px;right:5px;text-align:right;" selected>右下</option>
+        <option value="bottom:5px;left:5px;text-align:left;">左下</option>
+      </select>&nbsp;
+      字号 <select id="fontsize">
+        <option value="20">20</option>
+        <option value="22">22</option>
+        <option value="24" selected>24</option>
+        <option value="26">26</option>
+        <option value="28">28</option>
+        <option value="30">30</option>
+        <option value="32">32</option>
+      </select></span></div>
+    </div>
+  </div>
 
-	<p>在输入框中填写数字范围，然后点击抽取即可（按回车键或空格键亦可）。</p>
-
-	<!-- ================= 学号排除区（新增） ================= -->
-	<div class="exclude-box">
-		<b>学号排除</b>：<span id="exclude-status">正在读取同目录的 学号.txt …</span>
-		<div id="exclude-fallback" style="display:none;">
-			<span style="color:#c00;">无法自动读取同目录下的“学号.txt”（浏览器出于安全限制，直接双击打开本地网页时不允许脚本读取本地文件）。</span><br>
-			请手动选择该文件：<input type="file" id="exclude-file" accept=".txt,text/plain">
-		</div>
-		<div style="margin-top:6px;">
-			<button type="button" id="exclude-reload">重新读取 学号.txt</button>
-			<button type="button" id="exclude-clear">清空排除名单</button>
-			<span class="hint">（学号.txt 每行一个学号，也可用空格 / 逗号分隔，支持 2023001-2023050 区间写法）</span>
-		</div>
-	</div>
-	<!-- ===================================================== -->
-
-	<div id="screen">
-		<audio id="audio"></audio>
-		<p class="pc">
-			<input id="btn-full" type="button" value="全屏">
-			全屏后使用回车键或空格键抽取。
-		</p>
-		<div class="phone">
-			<input id="btn-full2" type="button" value="全屏">
-			全屏后摇动手机抽取
-			<span style="display:inline-block">(
-				<input id="zd" type="checkbox" value="1"><label for="zd">震动</label>
-				<input id="sy" type="checkbox" value="1"><label for="sy">声音</label>
-			)</span>
-		</div>
-	</div>
-
-	<div class="settings">设置：<br>
-		时延
-		<span id="timeout">
-			<input type="range" max="5000" min="250" value="700" id="settime">
-			<span id="time">0.70</span>秒
-		</span>
-		<label class="manual"><input id="manual" type="checkbox">手动</label>
-		<span id="manualtips">（点击按钮或按回车、空格键停止）</span><br>
-
-		背　景　颜　色　<input type="color" value="#ffffff" id="bc"><br>
-		数字颜色（滚动）<input type="color" value="#000000" id="tc"><br>
-		数字颜色（抽中）<input type="color" value="#ff0000" id="tsc"><br>
-
-		<div class="toggle">周期内不重复　　　<input id="repeat" type="checkbox" value="1" checked><label for="repeat"></label></div>
-		<div class="toggle">显示已抽取的数字　<input id="note" type="checkbox" value="1"><label for="note"></label></div>
-
-		<div id="bg">背景图片
-			<label class="getimage" for="fileinp">
-				<input type="button" value="选择图片">
-				<input type="file" id="fileinp" accept="image/*">
-			</label>
-			<input type="button" value="清除" id="delimage" style="display:none">
-		</div>
-
-		<div class="box">
-			<label><input id="boxbtn" type="checkbox" value="1">添加全屏提示文字</label>
-			<div id="box">
-				<textarea id="tips" placeholder="全屏时显示的文字，可以多行。"></textarea><br>
-				文字颜色
-				<input type="color" value="#000000" id="ttc">&nbsp;
-				<span style="display:inline-block">方位
-					<select id="position">
-						<option value="top:5px;right:0;text-align:center;">上中</option>
-						<option value="bottom:5px;right:0;text-align:center;">下中</option>
-						<option value="top:5px;left:5px;text-align:left;">左上</option>
-						<option value="top:5px;right:5px;text-align:right;">右上</option>
-						<option value="bottom:5px;right:5px;text-align:right;" selected>右下</option>
-						<option value="bottom:5px;left:5px;text-align:left;">左下</option>
-					</select>&nbsp;
-					字号
-					<select id="fontsize">
-						<option value="20">20</option>
-						<option value="22">22</option>
-						<option value="24" selected>24</option>
-						<option value="26">26</option>
-						<option value="28">28</option>
-						<option value="30">30</option>
-						<option value="32">32</option>
-					</select>
-				</span>
-			</div>
-		</div>
-	</div>
-
-	<p>随机抽号基于内置的随机数发生器，在预设数字范围内，采用平均分布的抽取方式产生一个随机数。人的主观意念认为数字范围的最小端和最大端抽取到的概率更低，实际上它们和中间段数字出现的概率相同。</p>
-	<p>该页面作为一个通用的抽号在线工具，供需要的用户使用。抽号工具默认开启了去重处理，即在一个周期内不会抽取到重复的数字。例如抽取1-9，在第10次抽取前不会出现重复数字。关闭“周期内不重复”选项，可取消此限制。</p>
-	<p>本版本新增：<b>自动读取同目录下的「学号.txt」，其中出现的学号永远不会被抽到</b>。</p>
+  <p>随机抽号基于内置的随机数发生器，在预设数字范围内，采用平均分布的抽取方式产生一个随机数。人的主观意念认为数字范围的最小端和最大端抽取到的概率更低，实际上它们和中间段数字出现的概率相同。</p>
+  <p>该页面作为一个通用的抽号在线工具，供需要的用户使用。抽号工具默认开启了去重处理，即在一个周期内不会抽取到重复的数字。例如抽取1-9，在第10次抽取前不会出现重复数字。关闭“周期内不重复”选项，可取消此限制。</p>
+  <p>相关页面：<a href="/zh/suiji.htm">随机抽取工具</a></p>
 </div>
-
 <div class="foot">QQXIUZI.CN　<a href="https://www.qqxiuzi.cn">千千秀字</a></div>
 
 <script>
 (function () {
-	'use strict';
+'use strict';
 
-	function $(id) { return document.getElementById(id); }
+function $(id) { return document.getElementById(id); }
 
-	/* ==================== 全局状态 ==================== */
-	var excludeSet  = new Set();   // 学号.txt 里要排除的数字
-	var drawnSet    = new Set();   // 本周期内已抽中的数字
-	var rolling     = false;
-	var rollTimer   = null;
-	var stopTimer   = null;
-	var pending     = null;        // 本次抽取结果
-	var manualMode  = false;
-	var timeoutMs   = 700;
-	var avoidRepeat = true;
-	var POOL_LIMIT  = 200000;      // 范围内数字个数小于此值时直接建池，绝对公平
+/* ==================== 状态 ==================== */
+var excludeSet  = new Set();   // 学号.txt 里要排除的学号
+var drawnSet    = new Set();   // 本周期内已抽中的数字
+var rolling     = false;
+var rollTimer   = null;
+var stopTimer   = null;
+var pending     = null;        // 本次抽中结果
+var manualMode  = false;
+var timeoutMs   = 700;
+var avoidRepeat = true;
+var POOL_LIMIT  = 200000;      // 范围内数字个数不超过此值时建池，绝对公平
 
-	/* ==================== 学号文件解析 ==================== */
-	function parseExcludeText(text) {
-		var set = new Set();
-		if (!text) return set;
+/* ==================== 学号文件解析 ==================== */
+function parseExcludeText(text) {
+	var set = new Set();
+	if (!text) return set;
 
-		// 全角数字转半角
-		text = text.replace(/[０-９]/g, function (ch) {
-			return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
-		});
-		// 去掉 BOM
-		text = text.replace(/^\uFEFF/, '');
+	// 全角数字转半角
+	text = text.replace(/[０-９]/g, function (ch) {
+		return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+	});
+	// 去 BOM
+	text = text.replace(/^\uFEFF/, '');
 
-		var tokens = text.split(/[\s,，、;；|]+/);
-		for (var i = 0; i < tokens.length; i++) {
-			var tok = tokens[i].trim();
-			if (!tok) continue;
+	var tokens = text.split(/[\s,，、;；|]+/);
+	for (var i = 0; i < tokens.length; i++) {
+		var tok = tokens[i].trim();
+		if (!tok) continue;
 
-			// 支持 2023001-2023050 区间写法
-			var m = tok.match(/^(\d+)\s*[-~至]\s*(\d+)$/);
-			if (m) {
-				var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
-				if (a > b) { var t = a; a = b; b = t; }
-				if (b - a > 200000) continue;   // 防止误写导致卡死
-				for (var n = a; n <= b; n++) set.add(n);
-				continue;
-			}
-			// 纯数字学号
-			if (/^\d+$/.test(tok)) {
-				var v = parseInt(tok, 10);
-				if (!isNaN(v)) set.add(v);
-			}
-			// 其它格式（如含字母的学号）无法与数字对应，忽略
-		}
-		return set;
-	}
-
-	function applyExclude(text, sourceName) {
-		excludeSet = parseExcludeText(text);
-		var st = $('exclude-status');
-
-		if (excludeSet.size > 0) {
-			st.textContent = '已从「' + sourceName + '」载入 ' + excludeSet.size +
-				' 个学号，这些学号在任何时候都不会被抽到。';
-			st.style.color = '#060';
-		} else {
-			st.textContent = '已读取「' + sourceName + '」，但其中没有可用的数字学号。';
-			st.style.color = '#c60';
-		}
-		$('exclude-fallback').style.display = 'none';
-
-		// 排除名单变化后，已抽记录里的号码可能受影响，清空重来更安全
-		drawnSet.clear();
-		updateNotes();
-	}
-
-	function loadExcludeAuto() {
-		var st = $('exclude-status');
-		st.textContent = '正在读取同目录的 学号.txt …';
-		st.style.color = '';
-		$('exclude-fallback').style.display = 'none';
-
-		if (!window.fetch) {
-			showFallback('当前浏览器不支持 fetch。');
-			return;
-		}
-
-		fetch('学号.txt?t=' + Date.now(), { cache: 'no-store' })
-			.then(function (res) {
-				if (!res.ok) throw new Error('HTTP ' + res.status);
-				return res.text();
-			})
-			.then(function (txt) {
-				applyExclude(txt, '学号.txt');
-			})
-			.catch(function (err) {
-				showFallback(err && err.message ? err.message : '读取失败');
-			});
-	}
-
-	function showFallback(msg) {
-		var st = $('exclude-status');
-		st.textContent = '自动读取 学号.txt 失败（' + msg + '）。';
-		st.style.color = '#c00';
-		$('exclude-fallback').style.display = 'block';
-	}
-
-	/* ==================== 数字范围解析 ==================== */
-	function parseRange(str) {
-		str = (str || '').trim();
-		if (!str) return null;
-		str = str.replace(/[—–－]/g, '-').replace(/～/g, '~');
-
-		var m = str.match(/^(-?\d+)\s*[-~至]\s*(-?\d+)$/);
+		// 支持 2023001-2023050 区间写法
+		var m = tok.match(/^(\d+)\s*[-~至]\s*(\d+)$/);
 		if (m) {
 			var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
 			if (a > b) { var t = a; a = b; b = t; }
-			return { min: a, max: b };
+			if (b - a > 200000) continue;   // 防止误写导致卡死
+			for (var n = a; n <= b; n++) set.add(n);
+			continue;
 		}
-		if (/^-?\d+$/.test(str)) {
-			var n = parseInt(str, 10);
-			return { min: n, max: n };
+		// 纯数字学号
+		if (/^\d+$/.test(tok)) {
+			var v = parseInt(tok, 10);
+			if (!isNaN(v)) set.add(v);
 		}
-		return null;
+		// 其它格式（含字母的学号）无法与数字对应，忽略
 	}
+	return set;
+}
 
-	// 学号集合里落在 [min,max] 内的个数（只遍历集合，速度快）
-	function countExcludedInRange(min, max) {
-		var c = 0;
-		excludeSet.forEach(function (v) {
-			if (v >= min && v <= max) c++;
+function applyExclude(text) {
+	excludeSet = parseExcludeText(text);
+	var st = document.getElementById('exclude-manual-status');
+	if (st) st.textContent = '（已载入 ' + excludeSet.size + ' 个学号）';
+	drawnSet.clear();
+	updateNotes();
+}
+
+/* 自动读取同目录 学号.txt */
+function loadExclude() {
+	if (!window.fetch) { showManualPrompt(); return; }
+	fetch('学号.txt?t=' + Date.now(), { cache: 'no-store' })
+		.then(function (res) {
+			if (!res.ok) throw new Error('HTTP ' + res.status);
+			return res.text();
+		})
+		.then(function (txt) {
+			applyExclude(txt);
+		})
+		.catch(function () {
+			showManualPrompt();
 		});
-		return c;
+}
+
+/* 仅在自动读取失败时，才出现一个极简的手动选择入口（不改动原页面其它内容） */
+function showManualPrompt() {
+	if (document.getElementById('exclude-manual')) return;
+	var notes = $('notes');
+	if (!notes) return;
+	var div = document.createElement('div');
+	div.id = 'exclude-manual';
+	div.style.cssText = 'max-width:540px;margin:1em 0;padding:8px 10px;' +
+		'background:#fff8e6;border-left:2px solid #fa0;font-size:14px;line-height:1.8;';
+	div.innerHTML = '无法自动读取同目录的“学号.txt”，请手动选择该文件（其中的学号将不会被抽到）：<br>' +
+		'<input type="file" id="exclude-file" accept=".txt,text/plain"> ' +
+		'<span id="exclude-manual-status" style="color:#060;"></span>';
+	notes.parentNode.insertBefore(div, notes.nextSibling);
+
+	div.querySelector('#exclude-file').addEventListener('change', function () {
+		var f = this.files && this.files[0];
+		if (!f) return;
+		var rd = new FileReader();
+		rd.onload = function () { applyExclude(String(rd.result)); };
+		rd.readAsText(f, 'utf-8');
+	});
+}
+
+/* ==================== 数字范围解析 ==================== */
+function parseRange(str) {
+	str = (str || '').trim();
+	if (!str) return null;
+	str = str.replace(/[—–－]/g, '-').replace(/～/g, '~');
+
+	var m = str.match(/^(-?\d+)\s*[-~至]\s*(-?\d+)$/);
+	if (m) {
+		var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+		if (a > b) { var t = a; a = b; b = t; }
+		return { min: a, max: b };
+	}
+	if (/^-?\d+$/.test(str)) {
+		var n = parseInt(str, 10);
+		return { min: n, max: n };
+	}
+	return null;
+}
+
+function countExcludedInRange(min, max) {
+	var c = 0;
+	excludeSet.forEach(function (v) {
+		if (v >= min && v <= max) c++;
+	});
+	return c;
+}
+
+/* ==================== 抽取核心 ==================== */
+function pickRandom(min, max) {
+	var total = max - min + 1;
+	if (total <= 0) return null;
+
+	// 小范围：直接建池，绝对公平
+	if (total <= POOL_LIMIT) {
+		var pool = [];
+		for (var n = min; n <= max; n++) {
+			if (excludeSet.has(n)) continue;               // 学号，永不抽取
+			if (avoidRepeat && drawnSet.has(n)) continue;  // 本周期已抽过
+			pool.push(n);
+		}
+		if (pool.length === 0) return null;
+		return pool[Math.floor(Math.random() * pool.length)];
 	}
 
-	/* ==================== 抽取核心 ==================== */
-	// 返回一个可抽取的数字；没有任何可选数字时返回 null
-	function pickRandom(min, max) {
-		var total = max - min + 1;
-		if (total <= 0) return null;
-
-		// —— 小范围：直接构建候选池，保证绝对公平且不会死循环 ——
-		if (total <= POOL_LIMIT) {
-			var pool = [];
-			for (var n = min; n <= max; n++) {
-				if (excludeSet.has(n)) continue;              // 学号，永远不抽
-				if (avoidRepeat && drawnSet.has(n)) continue; // 本周期已抽过
-				pool.push(n);
-			}
-			if (pool.length === 0) return null;
-			return pool[Math.floor(Math.random() * pool.length)];
-		}
-
-		// —— 超大范围：拒绝采样 ——
-		for (var i = 0; i < 2000; i++) {
-			var r = min + Math.floor(Math.random() * total);
-			if (excludeSet.has(r)) continue;
-			if (avoidRepeat && drawnSet.has(r)) continue;
-			return r;
-		}
-		// 兜底：顺序扫描（极端情况下才会走到）
-		for (var k = min; k <= max; k++) {
-			if (excludeSet.has(k)) continue;
-			if (avoidRepeat && drawnSet.has(k)) continue;
-			return k;
-		}
-		return null;
+	// 超大范围：拒绝采样
+	for (var i = 0; i < 3000; i++) {
+		var r = min + Math.floor(Math.random() * total);
+		if (excludeSet.has(r)) continue;
+		if (avoidRepeat && drawnSet.has(r)) continue;
+		return r;
 	}
+	return null;
+}
 
-	function nextNumber(min, max) {
-		var n = pickRandom(min, max);
-		if (n !== null) return n;
+function nextNumber(min, max) {
+	var n = pickRandom(min, max);
+	if (n !== null) return n;
+	if (!avoidRepeat) return null;
 
-		if (!avoidRepeat) return null;
-
-		// 周期内不重复模式下抽空了，看看是不是「全都抽过了」
-		var total = max - min + 1;
-		var excluded = countExcludedInRange(min, max);
-		if (total - excluded > 0) {
-			if (confirm('本轮 ' + min + ' ~ ' + max + ' 范围内可抽的数字已经全部抽完了。\n是否重置已抽记录，重新开始一轮？')) {
-				drawnSet.clear();
-				updateNotes();
-				n = pickRandom(min, max);
-			}
-		}
-		return n;
-	}
-
-	/* ==================== 滚动与停止 ==================== */
-	function randomDisplay(min, max) {
-		var total = max - min + 1;
-		for (var i = 0; i < 60; i++) {
-			var n = min + Math.floor(Math.random() * total);
-			if (!excludeSet.has(n)) return n;
-		}
-		return min;
-	}
-
-	function toggleRoll() {
-		if (rolling) { stopRoll(); return; }
-
-		var range = parseRange($('num').value);
-		if (!range) {
-			alert('请输入正确的数字范围，例如：1-999');
-			return;
-		}
-
-		var total = range.max - range.min + 1;
-		var excluded = countExcludedInRange(range.min, range.max);
-		if (total - excluded <= 0) {
-			alert('范围 ' + range.min + ' ~ ' + range.max +
-				' 内的所有数字都被「学号.txt」排除了，无法抽取。');
-			return;
-		}
-
-		var n = nextNumber(range.min, range.max);
-		if (n === null) {
-			alert('当前没有可抽取的数字。');
-			return;
-		}
-
-		pending = n;
-		startRoll(range.min, range.max);
-	}
-
-	function startRoll(min, max) {
-		rolling = true;
-		$('out').style.color = $('tc').value;
-		$('btn').value = manualMode ? '停止' : '抽取中…';
-
-		rollTimer = setInterval(function () {
-			$('out').textContent = randomDisplay(min, max);
-		}, 50);
-
-		if (!manualMode) {
-			stopTimer = setTimeout(stopRoll, timeoutMs);
-		}
-	}
-
-	function stopRoll() {
-		if (!rolling) return;
-		rolling = false;
-
-		if (rollTimer) { clearInterval(rollTimer); rollTimer = null; }
-		if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
-
-		$('btn').value = '抽取';
-
-		var result = pending;
-		pending = null;
-
-		$('out').textContent = result;
-		$('out').style.color = $('tsc').value;
-
-		playSound();
-		if ($('zd').checked && navigator.vibrate) {
-			try { navigator.vibrate(200); } catch (e) {}
-		}
-
-		if (avoidRepeat) drawnSet.add(result);
-		updateNotes();
-	}
-
-	/* 用 WebAudio 合成一声“叮”，不依赖外部音频文件 */
-	var audioCtx = null;
-	function playSound() {
-		if (!$('sy').checked) return;
-		try {
-			audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-			var o = audioCtx.createOscillator();
-			var g = audioCtx.createGain();
-			o.connect(g); g.connect(audioCtx.destination);
-			o.type = 'sine';
-			o.frequency.value = 880;
-			g.gain.setValueAtTime(0.15, audioCtx.currentTime);
-			g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-			o.start();
-			o.stop(audioCtx.currentTime + 0.16);
-		} catch (e) {}
-	}
-
-	/* ==================== 界面刷新 ==================== */
-	function updateNotes() {
-		var box = $('notes');
-		var b = box.querySelector('b');
-		var span = box.querySelector('span');
-		b.textContent = drawnSet.size;
-		if (drawnSet.size === 0) {
-			span.textContent = '无';
-		} else {
-			var arr = [];
-			drawnSet.forEach(function (v) { arr.push(v); });
-			span.textContent = arr.join('、');
-		}
-	}
-
-	function updateT() {
-		var t = $('t');
-		t.textContent = $('tips').value;
-		var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-		var boxOn = $('boxbtn').checked;
-		t.style.display = (fs && boxOn && $('tips').value.trim()) ? 'block' : 'none';
-	}
-
-	function applyTPosition() {
-		var t = $('t');
-		t.style.top = ''; t.style.bottom = ''; t.style.left = ''; t.style.right = '';
-		var parts = $('position').value.split(';');
-		parts.forEach(function (p) {
-			if (!p) return;
-			var idx = p.indexOf(':');
-			if (idx < 0) return;
-			var k = p.slice(0, idx).trim();
-			var v = p.slice(idx + 1).trim();
-			if (k === 'text-align') t.style.textAlign = v;
-			else if (k === 'top' || k === 'bottom' || k === 'left' || k === 'right') t.style[k] = v;
-		});
-	}
-
-	function toggleFullscreen() {
-		var el = document.documentElement;
-		if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-			if (el.requestFullscreen) el.requestFullscreen();
-			else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-		} else {
-			if (document.exitFullscreen) document.exitFullscreen();
-			else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-		}
-		setTimeout(updateT, 120);
-	}
-
-	/* ==================== 摇一摇 ==================== */
-	var lastX = null, lastY = null, lastZ = null, lastShake = 0;
-	function motionHandler(e) {
-		var acc = e.accelerationIncludingGravity;
-		if (!acc) return;
-		if (lastX === null) {
-			lastX = acc.x; lastY = acc.y; lastZ = acc.z;
-			return;
-		}
-		var delta = Math.abs(acc.x - lastX) + Math.abs(acc.y - lastY) + Math.abs(acc.z - lastZ);
-		lastX = acc.x; lastY = acc.y; lastZ = acc.z;
-		var now = Date.now();
-		if (delta > 30 && now - lastShake > 1200) {
-			lastShake = now;
-			toggleRoll();
-		}
-	}
-
-	/* ==================== 初始化 ==================== */
-	function init() {
-
-		/* —— 学号文件 —— */
-		loadExcludeAuto();
-
-		$('exclude-reload').addEventListener('click', loadExcludeAuto);
-
-		$('exclude-clear').addEventListener('click', function () {
-			excludeSet = new Set();
-			$('exclude-status').textContent = '排除名单已清空（所有数字都可以被抽到）。';
-			$('exclude-status').style.color = '#c60';
-			$('exclude-fallback').style.display = 'none';
+	var total = max - min + 1;
+	var excl = countExcludedInRange(min, max);
+	if (total - excl > 0) {
+		if (confirm('本轮 ' + min + ' ~ ' + max + ' 范围内可抽的数字已经全部抽完了。\n是否重置已抽记录，重新开始一轮？')) {
 			drawnSet.clear();
 			updateNotes();
-		});
+			n = pickRandom(min, max);
+		}
+	}
+	return n;
+}
 
-		$('exclude-file').addEventListener('change', function () {
-			var f = this.files && this.files[0];
-			if (!f) return;
-			var reader = new FileReader();
-			reader.onload = function () {
-				applyExclude(String(reader.result), f.name);
-			};
-			reader.readAsText(f, 'utf-8');
-		});
+/* ==================== 滚动 / 停止 ==================== */
+function randomDisplay(min, max) {
+	var total = max - min + 1;
+	for (var i = 0; i < 60; i++) {
+		var n = min + Math.floor(Math.random() * total);
+		if (!excludeSet.has(n)) return n;
+	}
+	return min;
+}
 
-		/* —— 抽取按钮 / 键盘 —— */
-		$('btn').addEventListener('click', toggleRoll);
+function toggleRoll() {
+	if (rolling) { stopRoll(); return; }
 
-		document.addEventListener('keydown', function (e) {
-			var tag = (e.target && e.target.tagName || '').toLowerCase();
+	var range = parseRange($('num').value);
+	if (!range) {
+		alert('请输入正确的数字范围，例如：1-999');
+		return;
+	}
 
-			// 输入类控件内只处理 #num 的回车，其余交给浏览器默认行为
-			if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') {
-				if (e.key === 'Enter' && e.target.id === 'num') {
-					e.preventDefault();
-					toggleRoll();
-				}
-				return;
-			}
-			if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space' || e.code === 'Spacebar') {
+	var total = range.max - range.min + 1;
+	var excl = countExcludedInRange(range.min, range.max);
+	if (total - excl <= 0) {
+		alert('范围 ' + range.min + ' ~ ' + range.max + ' 内的数字都不可抽取。');
+		return;
+	}
+
+	var n = nextNumber(range.min, range.max);
+	if (n === null) {
+		alert('当前没有可抽取的数字。');
+		return;
+	}
+
+	pending = n;
+	startRoll(range.min, range.max);
+}
+
+function startRoll(min, max) {
+	rolling = true;
+	$('out').style.color = $('tc').value;
+	$('btn').value = manualMode ? '停止' : '抽取中…';
+
+	rollTimer = setInterval(function () {
+		$('out').textContent = randomDisplay(min, max);
+	}, 50);
+
+	if (!manualMode) {
+		stopTimer = setTimeout(stopRoll, timeoutMs);
+	}
+}
+
+function stopRoll() {
+	if (!rolling) return;
+	rolling = false;
+
+	if (rollTimer) { clearInterval(rollTimer); rollTimer = null; }
+	if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
+
+	$('btn').value = '抽取';
+
+	var result = pending;
+	pending = null;
+
+	$('out').textContent = result;
+	$('out').style.color = $('tsc').value;
+
+	playSound();
+	if ($('zd').checked && navigator.vibrate) {
+		try { navigator.vibrate(200); } catch (e) {}
+	}
+
+	if (avoidRepeat) drawnSet.add(result);
+	updateNotes();
+}
+
+/* 声音：优先播放原 audio，失败则用 WebAudio 合成一声“叮” */
+var audioCtx = null;
+function beep() {
+	try {
+		audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+		var o = audioCtx.createOscillator();
+		var g = audioCtx.createGain();
+		o.connect(g); g.connect(audioCtx.destination);
+		o.type = 'sine';
+		o.frequency.value = 880;
+		g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+		g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+		o.start();
+		o.stop(audioCtx.currentTime + 0.16);
+	} catch (e) {}
+}
+
+function playSound() {
+	if (!$('sy').checked) return;
+	var a = $('audio');
+	var p = null;
+	try { p = a.play(); } catch (e) { p = null; }
+	if (p && p.catch) { p.catch(function () { beep(); }); }
+	else if (!p) { beep(); }
+}
+
+/* ==================== 界面刷新 ==================== */
+function updateNotes() {
+	var box = $('notes');
+	var b = box.querySelector('b');
+	var span = box.querySelector('span');
+	if (!b || !span) return;
+	b.textContent = drawnSet.size;
+	if (drawnSet.size === 0) {
+		span.textContent = '无';
+	} else {
+		var arr = [];
+		drawnSet.forEach(function (v) { arr.push(v); });
+		span.textContent = arr.join('、');
+	}
+}
+
+function updateT() {
+	var t = $('t');
+	var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+	var on = $('boxbtn').checked && $('tips').value.trim();
+	t.textContent = $('tips').value;
+	t.style.display = (fs && on) ? 'block' : 'none';
+}
+
+function applyTPosition() {
+	var t = $('t');
+	t.style.top = ''; t.style.bottom = ''; t.style.left = ''; t.style.right = '';
+	t.style.textAlign = '';
+	$('position').value.split(';').forEach(function (p) {
+		if (!p) return;
+		var i = p.indexOf(':');
+		if (i < 0) return;
+		var k = p.slice(0, i).trim();
+		var v = p.slice(i + 1).trim();
+		if (k === 'text-align') t.style.textAlign = v;
+		else if (k === 'top' || k === 'bottom' || k === 'left' || k === 'right') t.style[k] = v;
+	});
+}
+
+function toggleFullscreen() {
+	var el = document.documentElement;
+	if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+		if (el.requestFullscreen) el.requestFullscreen();
+		else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+	} else {
+		if (document.exitFullscreen) document.exitFullscreen();
+		else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+	}
+	setTimeout(updateT, 120);
+}
+
+/* 摇一摇 */
+var lastX = null, lastY = null, lastZ = null, lastShake = 0;
+function motionHandler(e) {
+	var acc = e.accelerationIncludingGravity;
+	if (!acc) return;
+	if (lastX === null) {
+		lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+		return;
+	}
+	var delta = Math.abs(acc.x - lastX) + Math.abs(acc.y - lastY) + Math.abs(acc.z - lastZ);
+	lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+	var now = Date.now();
+	if (delta > 30 && now - lastShake > 1200) {
+		lastShake = now;
+		toggleRoll();
+	}
+}
+
+/* 背景图片（原页面内联 readImage 的实现） */
+window.readImage = function (inp) {
+	var f = inp.files && inp.files[0];
+	if (!f) return;
+	var rd = new FileReader();
+	rd.onload = function (ev) {
+		var o = $('out');
+		o.style.backgroundImage = 'url(' + ev.target.result + ')';
+		o.style.backgroundSize = 'contain';
+		o.style.backgroundPosition = 'center';
+		o.style.backgroundRepeat = 'no-repeat';
+		$('delimage').style.display = 'inline-block';
+	};
+	rd.readAsDataURL(f);
+};
+
+/* ==================== 初始化 ==================== */
+function init() {
+
+	/* 学号文件：自动读取，失败才给手动入口 */
+	loadExclude();
+
+	/* 抽取 */
+	$('btn').addEventListener('click', toggleRoll);
+
+	document.addEventListener('keydown', function (e) {
+		var el = e.target;
+		var tag = (el && el.tagName || '').toLowerCase();
+
+		if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') {
+			if (e.key === 'Enter' && el.id === 'num') {
 				e.preventDefault();
 				toggleRoll();
 			}
-		});
+			return;
+		}
+		if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space' || e.code === 'Spacebar') {
+			e.preventDefault();
+			toggleRoll();
+		}
+	});
 
-		/* —— 设置项 —— */
-		var settime = $('settime');
-		timeoutMs = parseInt(settime.value, 10) || 700;
-		$('time').textContent = (timeoutMs / 1000).toFixed(2);
-		settime.addEventListener('input', function () {
-			$('time').textContent = (this.value / 1000).toFixed(2);
-		});
-		settime.addEventListener('change', function () {
-			timeoutMs = parseInt(this.value, 10) || 700;
-		});
+	/* 时延 */
+	var settime = $('settime');
+	timeoutMs = parseInt(settime.value, 10) || 700;
+	$('time').textContent = (timeoutMs / 1000).toFixed(2);
+	settime.addEventListener('input', function () {
+		$('time').textContent = (this.value / 1000).toFixed(2);
+	});
+	settime.addEventListener('change', function () {
+		timeoutMs = parseInt(this.value, 10) || 700;
+	});
 
-		$('manual').addEventListener('change', function () {
-			manualMode = this.checked;
-			$('manualtips').style.display = manualMode ? 'inline' : 'none';
-		});
+	/* 手动 */
+	$('manual').addEventListener('change', function () {
+		manualMode = this.checked;
+		$('manualtips').style.display = manualMode ? 'inline' : 'none';
+	});
 
-		$('bc').addEventListener('input', function () {
-			$('out').style.backgroundColor = this.value;
-		});
-		$('tc').addEventListener('input', function () {
-			if (rolling) $('out').style.color = this.value;
-		});
-		$('tsc').addEventListener('input', function () {
-			if (!rolling) $('out').style.color = this.value;
-		});
+	/* 颜色 */
+	$('bc').addEventListener('input', function () {
+		$('out').style.backgroundColor = this.value;
+	});
+	$('tc').addEventListener('input', function () {
+		if (rolling) $('out').style.color = this.value;
+	});
+	$('tsc').addEventListener('input', function () {
+		if (!rolling) $('out').style.color = this.value;
+	});
 
-		var rep = $('repeat');
-		rep.checked = true;
-		rep.addEventListener('change', function () {
-			if (rolling) {
-				this.checked = true;
-				alert('运行中不可设置！');
-				return;
-			}
-			avoidRepeat = this.checked;
-			if (!avoidRepeat) { drawnSet.clear(); updateNotes(); }
-		});
+	/* 周期内不重复 */
+	var rep = $('repeat');
+	rep.checked = true;
+	rep.addEventListener('change', function () {
+		if (rolling) {
+			this.checked = true;
+			alert('运行中不可设置！');
+			return;
+		}
+		avoidRepeat = this.checked;
+		if (!avoidRepeat) { drawnSet.clear(); updateNotes(); }
+	});
 
-		$('note').addEventListener('change', function () {
-			$('notes').style.display = this.checked ? 'block' : 'none';
-		});
+	/* 显示已抽取的数字 */
+	$('note').addEventListener('change', function () {
+		$('notes').style.display = this.checked ? 'block' : 'none';
+	});
 
-		/* —— 背景图片 —— */
-		$('fileinp').addEventListener('change', function () {
-			var f = this.files && this.files[0];
-			if (!f) return;
-			var reader = new FileReader();
-			reader.onload = function (ev) {
-				$('out').style.backgroundImage = 'url(' + ev.target.result + ')';
-				$('delimage').style.display = 'inline-block';
-			};
-			reader.readAsDataURL(f);
-		});
-		$('delimage').addEventListener('click', function () {
-			$('out').style.backgroundImage = 'none';
-			this.style.display = 'none';
-		});
+	/* 清除背景图片 */
+	$('delimage').addEventListener('click', function () {
+		$('out').style.backgroundImage = 'none';
+		this.style.display = 'none';
+	});
 
-		/* —— 全屏提示文字 —— */
-		$('boxbtn').addEventListener('change', function () {
-			$('box').style.display = this.checked ? 'block' : 'none';
-			if (!this.checked) $('tips').value = '';
-			updateT();
-		});
-		$('tips').addEventListener('input', updateT);
-		$('ttc').addEventListener('input', function () {
-			$('t').style.color = this.value;
-		});
-		$('position').addEventListener('change', applyTPosition);
-		$('fontsize').addEventListener('change', function () {
-			$('t').style.fontSize = this.value + 'px';
-		});
+	/* 全屏提示文字 */
+	$('boxbtn').addEventListener('change', function () {
+		$('box').style.display = this.checked ? 'block' : 'none';
+		if (!this.checked) $('tips').value = '';
+		updateT();
+	});
+	$('tips').addEventListener('input', updateT);
+	$('ttc').addEventListener('input', function () {
+		$('t').style.color = this.value;
+	});
+	$('position').addEventListener('change', applyTPosition);
+	$('fontsize').addEventListener('change', function () {
+		$('t').style.fontSize = this.value + 'px';
+	});
 
-		/* —— 全屏 —— */
-		$('btn-full').addEventListener('click', toggleFullscreen);
-		$('btn-full2').addEventListener('click', function () {
-			if ($('sy').checked) playSound();
-			if ($('zd').checked && navigator.vibrate) {
-				try { navigator.vibrate(200); } catch (e) {}
-			}
-			window.addEventListener('devicemotion', motionHandler, false);
-			toggleFullscreen();
-		});
+	/* 全屏 */
+	$('btn-full').addEventListener('click', toggleFullscreen);
+	$('btn-full2').addEventListener('click', function () {
+		if ($('sy').checked) playSound();
+		if ($('zd').checked && navigator.vibrate) {
+			try { navigator.vibrate(200); } catch (e) {}
+		}
+		window.addEventListener('devicemotion', motionHandler, false);
+		toggleFullscreen();
+	});
+	['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+		document.addEventListener(ev, updateT, false);
+	});
 
-		['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
-			document.addEventListener(ev, updateT, false);
-		});
+	/* 初始 */
+	$('out').textContent = '0';
+	applyTPosition();
+	updateNotes();
+}
 
-		/* —— 初始界面 —— */
-		$('out').textContent = '0';
-		$('out').style.color = $('tsc').value;
-		applyTPosition();
-		updateNotes();
-	}
-
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', init);
-	} else {
-		init();
-	}
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', init);
+} else {
+	init();
+}
 })();
 </script>
 </body>
