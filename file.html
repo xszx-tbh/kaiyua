@@ -42,6 +42,8 @@
   .commit-time { font-size: .82rem; color: #57606a; white-space: nowrap; }
   .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
   .toolbar button { flex: 1; min-width: 140px; }
+  .folder-link { cursor: pointer; color: #0969da; font-weight: 600; text-decoration: none; }
+  .folder-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -71,10 +73,11 @@
   <div style="margin-top:.8rem">
     <label>路径（可留空表示根目录）</label>
     <input id="path" placeholder="例如 docs 或 images">
-    <div class="hint">上传时会存到这个目录下，列表也会显示这个目录的内容。</div>
+    <div class="hint">上传时会存到这个目录下，列表也会显示这个目录的内容。点击列表中的文件夹可直接进入。</div>
   </div>
   <div class="toolbar">
     <button id="loadBtn" class="secondary">读取文件列表</button>
+    <button id="upBtn" class="secondary" style="display:none">⬆ 上级目录</button>
     <button id="createFolderBtn" class="secondary">新建文件夹</button>
   </div>
   <div id="listStatus" class="status"></div>
@@ -261,7 +264,7 @@ async function gh(path, options = {}) {
   return data;
 }
 
-// ==================== 文件列表（分页 + 搜索） ====================
+// ==================== 文件列表（分页 + 搜索 + 进入文件夹） ====================
 const PAGE_SIZE = 30;
 let currentItems = [];      // 当前目录的完整条目
 let visibleCount = PAGE_SIZE; // 已渲染条数
@@ -293,20 +296,27 @@ function renderFileList() {
   for (const item of shown) {
     const isFile = item.type === 'file';
     const size = isFile ? formatSize(item.size) : '—';
+    const p = JSON.stringify(item.path);
+    let nameCell;
     let actions = '';
+
     if (isFile) {
-      const p = JSON.stringify(item.path);
       const s = JSON.stringify(item.sha);
+      nameCell = escapeHtml(item.name);
       actions = `<button class="secondary btn-sm" onclick='editFile(${p}, ${s})'>编辑</button>
                  <button class="secondary btn-sm" onclick='downloadFile(${p})'>下载</button>
                  <button class="warn btn-sm" onclick='renameFile(${p}, ${s})'>重命名</button>
                  <button class="danger btn-sm" onclick='doDelete(${p}, ${s})'>删除</button>`;
     } else if (item.type === 'dir') {
-      const p = JSON.stringify(item.path);
-      actions = `<button class="danger btn-sm" onclick='deleteFolder(${p})'>删除文件夹</button>`;
+      nameCell = `<a class="folder-link" href="javascript:void(0)" onclick='openFolder(${p})'>📁 ${escapeHtml(item.name)}</a>`;
+      actions = `<button class="secondary btn-sm" onclick='openFolder(${p})'>打开</button>
+                 <button class="danger btn-sm" onclick='deleteFolder(${p})'>删除文件夹</button>`;
+    } else {
+      nameCell = escapeHtml(item.name);
     }
+
     html += `<tr>
-      <td>${escapeHtml(item.name)}</td>
+      <td>${nameCell}</td>
       <td>${item.type === 'dir' ? '📁 目录' : '📄 文件'}</td>
       <td>${size}</td>
       <td>${actions}</td>
@@ -334,11 +344,38 @@ document.getElementById('searchInput').addEventListener('input', () => {
   renderFileList();
 });
 
+// 进入子文件夹
+function openFolder(folderPath) {
+  document.getElementById('path').value = folderPath;
+  document.getElementById('loadBtn').click();
+}
+
+// 返回上级目录
+document.getElementById('upBtn').addEventListener('click', () => {
+  const p = document.getElementById('path').value.trim().replace(/^\/+|\/+$/g, '');
+  if (!p) return;
+  const parts = p.split('/');
+  parts.pop();
+  document.getElementById('path').value = parts.join('/');
+  document.getElementById('loadBtn').click();
+});
+
+// 在路径输入框按回车直接加载
+document.getElementById('path').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('loadBtn').click();
+  }
+});
+
 document.getElementById('loadBtn').addEventListener('click', async () => {
   let cfg;
   try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
   setStatus('listStatus', 'info', '加载中…');
   document.getElementById('fileList').innerHTML = '<span class="muted">加载中…</span>';
+
+  // 更新“上级目录”按钮显示
+  document.getElementById('upBtn').style.display = cfg.path ? 'inline-block' : 'none';
 
   try {
     const p = cfg.path;
@@ -455,6 +492,12 @@ async function deleteFolder(folderPath) {
     });
 
     setStatus('listStatus', 'ok', '✅ 文件夹已删除');
+
+    // 如果当前正处在被删文件夹内部，跳回上级
+    const cur = document.getElementById('path').value.trim().replace(/^\/+|\/+$/g, '');
+    if (cur === folderPath || cur.startsWith(folderPath + '/')) {
+      document.getElementById('path').value = '';
+    }
     document.getElementById('loadBtn').click();
   } catch (e) {
     setStatus('listStatus', 'err', '❌ ' + e.message);
