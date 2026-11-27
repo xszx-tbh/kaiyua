@@ -40,6 +40,8 @@
   .commit-msg { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .commit-sha { font-family: ui-monospace, Consolas, monospace; font-size: .82rem; }
   .commit-time { font-size: .82rem; color: #57606a; white-space: nowrap; }
+  .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
+  .toolbar button { flex: 1; min-width: 140px; }
 </style>
 </head>
 <body>
@@ -71,8 +73,9 @@
     <input id="path" placeholder="例如 docs 或 images">
     <div class="hint">上传时会存到这个目录下，列表也会显示这个目录的内容。</div>
   </div>
-  <div style="margin-top:.8rem">
+  <div class="toolbar">
     <button id="loadBtn" class="secondary">读取文件列表</button>
+    <button id="createFolderBtn" class="secondary">新建文件夹</button>
   </div>
   <div id="listStatus" class="status"></div>
 </div>
@@ -104,6 +107,10 @@
 
 <div class="card">
   <h3>文件列表</h3>
+  <div style="margin-bottom:.8rem">
+    <input id="searchInput" placeholder="🔍 在当前目录中查找文件…">
+    <div class="hint">输入关键词即时过滤当前目录下的文件/文件夹名称。</div>
+  </div>
   <div id="fileList" class="muted">尚未加载，请先点击“读取文件列表”。</div>
 </div>
 
@@ -207,6 +214,21 @@ function getConfig() {
   return { owner, repo, branch, path };
 }
 
+// 删除密码校验（文件 / 文件夹共用）
+function checkPassword(label) {
+  if (!PASSWORD) {
+    alert('未读取到同目录的 mm.txt，无法执行删除操作。');
+    return false;
+  }
+  const input = prompt('删除' + label + '需要密码，请输入：');
+  if (input === null) return false;
+  if (input !== PASSWORD) {
+    alert('密码错误，删除已取消。');
+    return false;
+  }
+  return true;
+}
+
 // ---------- Base64 <-> UTF-8 文本 ----------
 function base64ToUtf8(base64) {
   const clean = base64.replace(/\s/g, '');
@@ -239,7 +261,79 @@ async function gh(path, options = {}) {
   return data;
 }
 
-// ==================== 读取列表 ====================
+// ==================== 文件列表（分页 + 搜索） ====================
+const PAGE_SIZE = 30;
+let currentItems = [];      // 当前目录的完整条目
+let visibleCount = PAGE_SIZE; // 已渲染条数
+
+function renderFileList() {
+  const container = document.getElementById('fileList');
+  if (!currentItems || currentItems.length === 0) {
+    container.innerHTML = '<span class="muted">目录为空</span>';
+    return;
+  }
+
+  const keyword = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+
+  // 过滤掉占位文件 .gitkeep
+  let items = currentItems.filter(it => it.name !== '.gitkeep');
+  if (keyword) {
+    items = items.filter(it => it.name.toLowerCase().includes(keyword));
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = '<span class="muted">' +
+      (keyword ? '没有匹配的文件' : '目录为空') + '</span>';
+    return;
+  }
+
+  const shown = items.slice(0, visibleCount);
+
+  let html = '<table><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>操作</th></tr></thead><tbody>';
+  for (const item of shown) {
+    const isFile = item.type === 'file';
+    const size = isFile ? formatSize(item.size) : '—';
+    let actions = '';
+    if (isFile) {
+      const p = JSON.stringify(item.path);
+      const s = JSON.stringify(item.sha);
+      actions = `<button class="secondary btn-sm" onclick='editFile(${p}, ${s})'>编辑</button>
+                 <button class="secondary btn-sm" onclick='downloadFile(${p})'>下载</button>
+                 <button class="warn btn-sm" onclick='renameFile(${p}, ${s})'>重命名</button>
+                 <button class="danger btn-sm" onclick='doDelete(${p}, ${s})'>删除</button>`;
+    } else if (item.type === 'dir') {
+      const p = JSON.stringify(item.path);
+      actions = `<button class="danger btn-sm" onclick='deleteFolder(${p})'>删除文件夹</button>`;
+    }
+    html += `<tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${item.type === 'dir' ? '📁 目录' : '📄 文件'}</td>
+      <td>${size}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+
+  if (shown.length < items.length) {
+    const remain = items.length - shown.length;
+    html += `<div style="margin-top:.8rem;text-align:center">
+      <button class="secondary" style="width:auto" onclick="loadMoreFiles()">加载更多（还有 ${remain} 条）</button>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function loadMoreFiles() {
+  visibleCount += PAGE_SIZE;
+  renderFileList();
+}
+
+document.getElementById('searchInput').addEventListener('input', () => {
+  visibleCount = PAGE_SIZE;
+  renderFileList();
+});
+
 document.getElementById('loadBtn').addEventListener('click', async () => {
   let cfg;
   try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
@@ -255,40 +349,117 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
 
     if (!Array.isArray(data)) throw new Error(data.message || '该路径不是目录');
 
+    currentItems = data;
+    visibleCount = PAGE_SIZE;
+    document.getElementById('searchInput').value = '';
+
     if (data.length === 0) {
       document.getElementById('fileList').innerHTML = '<span class="muted">目录为空</span>';
       hideStatus('listStatus');
       return;
     }
 
-    let html = '<table><thead><tr><th>名称</th><th>类型</th><th>大小</th><th>操作</th></tr></thead><tbody>';
-    for (const item of data) {
-      const isFile = item.type === 'file';
-      const size = isFile ? formatSize(item.size) : '—';
-      let actions = '';
-      if (isFile) {
-        const p = JSON.stringify(item.path);
-        const s = JSON.stringify(item.sha);
-        actions = `<button class="secondary btn-sm" onclick='editFile(${p}, ${s})'>编辑</button>
-                   <button class="secondary btn-sm" onclick='downloadFile(${p})'>下载</button>
-                   <button class="warn btn-sm" onclick='renameFile(${p}, ${s})'>重命名</button>
-                   <button class="danger btn-sm" onclick='doDelete(${p}, ${s})'>删除</button>`;
-      }
-      html += `<tr>
-        <td>${escapeHtml(item.name)}</td>
-        <td>${item.type === 'dir' ? '📁 目录' : '📄 文件'}</td>
-        <td>${size}</td>
-        <td>${actions}</td>
-      </tr>`;
-    }
-    html += '</tbody></table>';
-    document.getElementById('fileList').innerHTML = html;
+    renderFileList();
     hideStatus('listStatus');
   } catch (e) {
     setStatus('listStatus', 'err', '❌ ' + e.message);
     document.getElementById('fileList').innerHTML = '<span class="muted">加载失败</span>';
   }
 });
+
+// ==================== 新建文件夹 ====================
+document.getElementById('createFolderBtn').addEventListener('click', async () => {
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
+
+  const name = prompt('请输入新文件夹名称：');
+  if (name === null) return;
+  const folderName = name.trim().replace(/^\/+|\/+$/g, '');
+
+  if (!folderName) { alert('文件夹名称不能为空'); return; }
+  if (folderName.includes('/')) { alert('名称中不能包含 /'); return; }
+
+  const folderPath = cfg.path ? `${cfg.path}/${folderName}` : folderName;
+  const placeholderPath = `${folderPath}/.gitkeep`;
+
+  setStatus('listStatus', 'info', '创建文件夹中…');
+  try {
+    // GitHub 不保存空目录，用 .gitkeep 占位
+    await gh(`/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(placeholderPath)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Create folder ${folderPath} via web`,
+        content: '',
+        branch: cfg.branch
+      })
+    });
+    setStatus('listStatus', 'ok', '✅ 文件夹已创建：' + escapeHtml(folderPath));
+    document.getElementById('loadBtn').click();
+  } catch (e) {
+    setStatus('listStatus', 'err', '❌ ' + e.message);
+  }
+});
+
+// ==================== 删除文件夹 ====================
+async function deleteFolder(folderPath) {
+  if (!checkPassword('文件夹')) return;
+  if (!confirm('确定删除文件夹\n' + folderPath + '\n及其中的所有文件？此操作会创建一个删除提交。')) return;
+
+  let cfg;
+  try { cfg = getConfig(); } catch (e) { setStatus('listStatus', 'err', e.message); return; }
+
+  setStatus('listStatus', 'info', '删除文件夹中…');
+  try {
+    const ref = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/ref/heads/${encodeURIComponent(cfg.branch)}`);
+    const latestCommitSha = ref.object.sha;
+
+    const commit = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/commits/${latestCommitSha}`);
+    const baseTreeSha = commit.tree.sha;
+
+    const treeData = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/trees/${baseTreeSha}?recursive=1`);
+    if (treeData.truncated) {
+      throw new Error('仓库文件过多，无法完整读取目录树，操作已取消');
+    }
+
+    const prefix = folderPath + '/';
+    const entries = (treeData.tree || []).filter(t => t.type === 'blob' && t.path.startsWith(prefix));
+
+    if (entries.length === 0) {
+      throw new Error('该文件夹为空或不存在');
+    }
+
+    const newTree = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/trees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        base_tree: baseTreeSha,
+        tree: entries.map(t => ({ path: t.path, mode: t.mode, type: t.type, sha: null }))
+      })
+    });
+
+    const newCommit = await gh(`/repos/${cfg.owner}/${cfg.repo}/git/commits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Delete folder ${folderPath} via web`,
+        tree: newTree.sha,
+        parents: [latestCommitSha]
+      })
+    });
+
+    await gh(`/repos/${cfg.owner}/${cfg.repo}/git/refs/heads/${encodeURIComponent(cfg.branch)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sha: newCommit.sha })
+    });
+
+    setStatus('listStatus', 'ok', '✅ 文件夹已删除');
+    document.getElementById('loadBtn').click();
+  } catch (e) {
+    setStatus('listStatus', 'err', '❌ ' + e.message);
+  }
+}
 
 // ==================== 下载文件 ====================
 async function downloadFile(filePath) {
@@ -297,13 +468,11 @@ async function downloadFile(filePath) {
 
   setStatus('listStatus', 'info', '正在准备下载 ' + filePath + ' …');
   try {
-    // 通过 API 获取文件内容（支持公开仓库和私有仓库）
     const data = await gh(
       `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(cfg.branch)}`
     );
 
     if (!data.content) {
-      // 文件超过 1MB 时 API 不返回 content，改用 download_url
       if (data.download_url) {
         const raw = await fetch(data.download_url, { cache: 'no-store' });
         if (!raw.ok) throw new Error('HTTP ' + raw.status);
@@ -315,7 +484,6 @@ async function downloadFile(filePath) {
       throw new Error('无法获取文件内容');
     }
 
-    // 将 Base64 还原成二进制 Blob（正确处理二进制文件）
     const clean = data.content.replace(/\s/g, '');
     const binary = atob(clean);
     const bytes = new Uint8Array(binary.length);
@@ -581,19 +749,9 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   }
 });
 
-// ==================== 删除（需密码） ====================
+// ==================== 删除文件（需密码） ====================
 async function doDelete(filePath, sha) {
-  if (!PASSWORD) {
-    alert('未读取到同目录的 mm.txt，无法执行删除操作。');
-    return;
-  }
-
-  const input = prompt('删除文件需要密码，请输入：');
-  if (input === null) return;
-  if (input !== PASSWORD) {
-    alert('密码错误，删除已取消。');
-    return;
-  }
+  if (!checkPassword('文件')) return;
 
   if (!confirm('确定删除 ' + filePath + ' ？此操作会创建一个删除提交。')) return;
 
