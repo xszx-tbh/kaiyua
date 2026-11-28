@@ -1,29 +1,6 @@
 {
-  "count": 297,
+  "count": 298,
   "entries": [
-    {
-      "localTime": "Thu Nov 19 2026 20:35:17 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-11-19T12:35:17.105Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (Linux; Android 16; PLE110 Build/BP2A.250605.015; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.189 Mobile Safari/537.36 XWEB/1500213 MMWEBSDK/20260901 MMWEBID/9029 REV/8bb09e872e59e0fd146f6d993eff881baacade68 MicroMessenger/8.0.78.3180(0x28004E3B) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64",
-      "language": "zh-CN",
-      "languages": "zh-CN,en-US",
-      "platform": "Linux aarch64",
-      "vendor": "Google Inc.",
-      "hardwareConcurrency": 8,
-      "deviceMemory": 8,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "440x963",
-      "availScreen": "440x963",
-      "colorDepth": 24,
-      "pixelRatio": 2.909090995788574,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Fri Nov 20 2026 09:59:33 GMT+0800 (中国标准时间)",
       "timestamp": "2026-11-20T01:59:33.967Z",
@@ -460,6 +437,29 @@
       "timezoneOffset": 0,
       "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
+    },
+    {
+      "localTime": "Sat Nov 28 2026 12:07:09 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-11-28T04:07:09.532Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 16; 2312DRA50C Build/BP2A.250605.031.A3; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.189 Mobile Safari/537.36 XWEB/1500213 MMWEBSDK/20260902 MMWEBID/8075 REV/ba25642c9a356cd3dbcf94205524bd90c4e2866b MicroMessenger/8.0.80.3220(0x2800503E) WeChat/arm64 Weixin NetType/4G Language/zh_CN ABI/arm64",
+      "language": "zh-CN",
+      "languages": "zh-CN,en-US",
+      "platform": "Linux aarch64",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 8,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "400x890",
+      "availScreen": "400x890",
+      "colorDepth": 24,
+      "pixelRatio": 3.049999952316284,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/",
+      "referrer": "https://weixin110.qq.com/"
     }
   ]
 }
