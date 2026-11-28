@@ -1,29 +1,6 @@
 {
-  "count": 301,
+  "count": 302,
   "entries": [
-    {
-      "localTime": "Sun Nov 22 2026 13:08:08 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-11-22T05:08:08.087Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.80(0x18005040) NetType/WIFI Language/zh_CN",
-      "language": "zh-CN",
-      "languages": "zh-CN",
-      "platform": "iPhone",
-      "vendor": "Apple Computer, Inc.",
-      "hardwareConcurrency": 4,
-      "deviceMemory": null,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "393x852",
-      "availScreen": "393x852",
-      "colorDepth": 24,
-      "pixelRatio": 3,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": "https://weixin110.qq.com/"
-    },
     {
       "localTime": "Sun Nov 22 2026 13:09:18 GMT+0800 (中国标准时间)",
       "timestamp": "2026-11-22T05:09:18.597Z",
@@ -459,6 +436,29 @@
       "timezone": "Asia/Shanghai",
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/a.png",
+      "referrer": ""
+    },
+    {
+      "localTime": "Sat Nov 28 2026 21:14:29 GMT+0000 (Coordinated Universal Time)",
+      "timestamp": "2026-11-28T21:14:29.435Z",
+      "ip": "104.154.157.49",
+      "userAgent": "Mozilla/5.0 (Linux; U; Android 3.0; en-us; Xoom Build/HRI39) AppleWebKit/525.10  (KHTML, like Gecko) Version/3.0.4 Mobile Safari/523.12.2",
+      "language": "en-US",
+      "languages": "en-US",
+      "platform": "Linux x86_64",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 16,
+      "deviceMemory": 8,
+      "maxTouchPoints": 0,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "1920x1080",
+      "availScreen": "1920x1080",
+      "colorDepth": 24,
+      "pixelRatio": 1,
+      "timezone": "UTC",
+      "timezoneOffset": 0,
+      "pageUrl": "https://kyxbx.pages.dev/",
       "referrer": ""
     }
   ]
