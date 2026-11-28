@@ -1,29 +1,6 @@
 {
-  "count": 300,
+  "count": 301,
   "entries": [
-    {
-      "localTime": "Fri Nov 20 2026 14:26:04 GMT+0800 (中国标准时间)",
-      "timestamp": "2026-11-20T06:26:04.432Z",
-      "ip": "",
-      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Mobile/15E148 Safari/604.1",
-      "language": "zh-CN",
-      "languages": "zh-CN",
-      "platform": "iPhone",
-      "vendor": "Apple Computer, Inc.",
-      "hardwareConcurrency": 4,
-      "deviceMemory": null,
-      "maxTouchPoints": 5,
-      "cookieEnabled": true,
-      "onLine": true,
-      "screen": "430x932",
-      "availScreen": "932x430",
-      "colorDepth": 24,
-      "pixelRatio": 3,
-      "timezone": "Asia/Shanghai",
-      "timezoneOffset": -480,
-      "pageUrl": "https://kyxbx.pages.dev/",
-      "referrer": ""
-    },
     {
       "localTime": "Sun Nov 22 2026 13:08:08 GMT+0800 (中国标准时间)",
       "timestamp": "2026-11-22T05:08:08.087Z",
@@ -459,6 +436,29 @@
       "timezone": "Asia/Shanghai",
       "timezoneOffset": -480,
       "pageUrl": "https://kyxbx.pages.dev/a.pmg",
+      "referrer": ""
+    },
+    {
+      "localTime": "Sat Nov 28 2026 19:25:11 GMT+0800 (中国标准时间)",
+      "timestamp": "2026-11-28T11:25:11.407Z",
+      "ip": "",
+      "userAgent": "Mozilla/5.0 (Linux; Android 17; BVL-AN16 Build/HONORBVL-AN16; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/151.0.7922.199 Mobile Safari/537.36 SP-engine/2.76.0 languageType/0 bdh_dvt/0 bdh_de/0 bdh_ds/0 bdapp/1.0 (bdhonorbrowser; bdhonorbrowser) bdhonorbrowser/9.5.0.4 (P1 17) NABar/1.0",
+      "language": "zh-CN",
+      "languages": "zh-CN,en-US",
+      "platform": "Linux aarch64",
+      "vendor": "Google Inc.",
+      "hardwareConcurrency": 8,
+      "deviceMemory": 8,
+      "maxTouchPoints": 5,
+      "cookieEnabled": true,
+      "onLine": true,
+      "screen": "366x801",
+      "availScreen": "366x801",
+      "colorDepth": 24,
+      "pixelRatio": 3.5,
+      "timezone": "Asia/Shanghai",
+      "timezoneOffset": -480,
+      "pageUrl": "https://kyxbx.pages.dev/a.png",
       "referrer": ""
     }
   ]
